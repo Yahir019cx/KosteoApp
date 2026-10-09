@@ -1,4 +1,4 @@
-package com.kosteo.kosteo
+package com.nexdevcode.kosteo
 
 import io.flutter.embedding.android.FlutterActivity
 
