@@ -19,6 +19,7 @@ import 'orders_screen.dart';
 import 'placeholder_screen.dart';
 import 'products_screen.dart';
 import 'purchases_screen.dart';
+import 'reports_screen.dart';
 
 /// Contenedor principal: cuatro secciones + botón + central en la barra flotante.
 /// Las secciones se mantienen vivas (conservan scroll) y cambian con fundido.
@@ -277,7 +278,7 @@ class _MoreSheet extends StatelessWidget {
                 caption: 'Tendencias',
                 icon: KIcons.chartBar,
                 color: KColors.sun,
-                onTap: () => open(const PlaceholderScreen.reports()),
+                onTap: () => open(const ReportsScreen()),
               ),
             ],
           ),
