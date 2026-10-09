@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiException implements Exception {
@@ -33,6 +34,10 @@ class ApiClient {
   final http.Client client;
   final String baseUrl;
   final Map<String, String> _pendingKeys = {};
+
+  /// Peticiones en curso; la UI muestra un spinner global mientras sea > 0.
+  static final pending = ValueNotifier<int>(0);
+
   Future<dynamic> request(
     String method,
     String path, {
@@ -62,6 +67,7 @@ class ApiClient {
     final req = http.Request(method, uri)
       ..headers['Content-Type'] = 'application/json';
     if (body != null) req.body = jsonEncode(body);
+    pending.value++;
     try {
       final response = await (() async => http.Response.fromStream(
         await client.send(req),
@@ -85,6 +91,8 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw ApiException('No se pudo conectar. Reintenta la operación.');
+    } finally {
+      pending.value--;
     }
   }
 

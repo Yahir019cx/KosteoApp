@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'screens/shell.dart';
 import 'theme/tokens.dart';
+import 'widgets/api_activity.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,7 @@ class KosteoApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildKosteoTheme(),
       scrollBehavior: const KosteoScrollBehavior(),
+      builder: (context, child) => ApiActivity(child: child!),
       home: const HomeShell(),
     );
   }

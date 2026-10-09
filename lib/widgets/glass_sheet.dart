@@ -33,7 +33,10 @@ Future<T?> showGlassSheet<T>(
           // Fondo desenfocado y oscurecido apenas; tocarlo cierra.
           Positioned.fill(
             child: GestureDetector(
-              onTap: () => Navigator.of(context).maybePop(),
+              onTap: () {
+                FocusManager.instance.primaryFocus?.unfocus();
+                Navigator.of(context).maybePop();
+              },
               child: AnimatedBuilder(
                 animation: anim,
                 builder: (_, _) => BackdropFilter(
@@ -73,10 +76,49 @@ class _GlassSheetFrame extends StatefulWidget {
 class _GlassSheetFrameState extends State<_GlassSheetFrame> {
   double _drag = 0;
 
+  void _unfocus() => FocusManager.instance.primaryFocus?.unfocus();
+
+  void _dragBy(double dy) => setState(() => _drag = (_drag + dy).clamp(0, 600));
+
+  void _release(double velocity) {
+    if (_drag > 110 || (_drag > 0 && velocity > 700)) {
+      _unfocus();
+      Navigator.of(context).maybePop();
+    } else if (_drag != 0) {
+      setState(() => _drag = 0);
+    }
+  }
+
+  /// Si el contenido es scrolleable, arrastrar hacia abajo estando ya arriba
+  /// mueve la hoja en lugar del scroll (como en iOS).
+  bool _onScroll(ScrollNotification n) {
+    if (n.depth != 0) return false;
+    if (n is OverscrollNotification &&
+        n.dragDetails != null &&
+        n.overscroll < 0) {
+      _dragBy(-n.overscroll);
+    } else if (n is ScrollUpdateNotification &&
+        n.dragDetails != null &&
+        _drag > 0) {
+      _dragBy(n.dragDetails!.delta.dy);
+    } else if (n is ScrollEndNotification && _drag > 0) {
+      _release(n.dragDetails?.primaryVelocity ?? 0);
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final safeTop = MediaQuery.paddingOf(context).top;
+    final height = MediaQuery.sizeOf(context).height;
+    // Con el teclado abierto la hoja no debe tapar toda la pantalla: siempre
+    // queda una franja de fondo para tocar y cerrar.
+    final maxHeight = (height - bottomInset - safeTop - 48).clamp(
+      120.0,
+      height * 0.9,
+    );
     return Align(
       alignment: Alignment.bottomCenter,
       child: AnimatedPadding(
@@ -85,29 +127,28 @@ class _GlassSheetFrameState extends State<_GlassSheetFrame> {
         child: ConstrainedBox(
           constraints: BoxConstraints(
             maxWidth: widget.maxWidth,
-            maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+            maxHeight: maxHeight,
           ),
           child: GestureDetector(
-            onVerticalDragUpdate: (d) =>
-                setState(() => _drag = (_drag + d.delta.dy).clamp(0, 600)),
-            onVerticalDragEnd: (d) {
-              if (_drag > 110 || d.primaryVelocity! > 700) {
-                Navigator.of(context).maybePop();
-              } else {
-                setState(() => _drag = 0);
-              }
-            },
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(end: _drag),
-              duration: _drag == 0 ? KMotion.base : Duration.zero,
-              curve: KMotion.ease,
-              builder: (context, dy, child) =>
-                  Transform.translate(offset: Offset(0, dy), child: child),
-              child: Material(
-                type: MaterialType.transparency,
-                child: _SheetSurface(
-                  safeBottom: bottomInset > 0 ? 0 : safeBottom,
-                  child: widget.builder(context),
+            // Tocar fuera de un campo cierra el teclado.
+            onTap: _unfocus,
+            onVerticalDragStart: (_) => _unfocus(),
+            onVerticalDragUpdate: (d) => _dragBy(d.delta.dy),
+            onVerticalDragEnd: (d) => _release(d.primaryVelocity ?? 0),
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScroll,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(end: _drag),
+                duration: _drag == 0 ? KMotion.base : Duration.zero,
+                curve: KMotion.ease,
+                builder: (context, dy, child) =>
+                    Transform.translate(offset: Offset(0, dy), child: child),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: _SheetSurface(
+                    safeBottom: bottomInset > 0 ? 0 : safeBottom,
+                    child: widget.builder(context),
+                  ),
                 ),
               ),
             ),
@@ -175,6 +216,10 @@ class SheetBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      // Clamping para que el arrastre en el tope pase a la hoja; deslizar
+      // también baja el teclado.
+      physics: const ClampingScrollPhysics(),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(KSpace.xl, KSpace.l, KSpace.xl, 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,

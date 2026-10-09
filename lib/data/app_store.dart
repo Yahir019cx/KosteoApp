@@ -371,7 +371,7 @@ String todayLabel() {
 
 String greeting() {
   final h = DateTime.now().hour;
-  return h < 12 ? 'Buenos días' : (h < 19 ? 'Buenas tardes' : 'Buenas noches');
+  return h < 12 ? 'Buenos días Yahir' : (h < 19 ? 'Buenas tardes Yahir' : 'Buenas noches Yahir');
 }
 
 String nowTime() {
