@@ -522,15 +522,17 @@ class KosteoStore extends ChangeNotifier {
     final rows = await api.get('/platillos') as List;
     products.clear();
     for (final r in rows) {
-      final ps = (r['presentaciones'] as List)
-          .where((s) => s['activa'] == true)
-          .toList();
-      final primary = ps.isEmpty
-          ? null
-          : ps.firstWhere(
-              (s) => s['nombre'] == 'Individual',
-              orElse: () => ps.first,
+      // Individual siempre primero: es la presentación por defecto al pedir.
+      final ps =
+          (r['presentaciones'] as List)
+              .where((s) => s['activa'] == true)
+              .toList()
+            ..sort(
+              (a, b) =>
+                  (a['nombre'] == 'Individual' ? 0 : 1) -
+                  (b['nombre'] == 'Individual' ? 0 : 1),
             );
+      final primary = ps.firstOrNull;
       final cat =
           const {
             'AGUACHILES': 'Aguachiles',

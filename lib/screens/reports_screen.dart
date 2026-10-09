@@ -158,7 +158,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
               children: [
                 ContentWidth(
-                maxWidth: 760,
+                  maxWidth: 760,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
