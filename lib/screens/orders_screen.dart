@@ -204,6 +204,7 @@ class _OrdersGrid extends StatelessWidget {
                           orders[i],
                           OrderStatus.cancelled,
                         );
+                        if (ctx.mounted) showToast(ctx, 'Pedido cancelado');
                         if (ctx.mounted) Navigator.of(ctx).pop();
                       }),
                     ),

@@ -57,7 +57,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
 
   Future<void> _add(Product p) async {
     if (p.priceFor(_sizeOf(p)) == null) {
-      showToast(context, 'Configura primero el precio de venta.');
+      showErrorToast(context, 'Configura primero el precio de venta.');
       return;
     }
     OrderLine? line;
@@ -580,7 +580,7 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
                   selected: _extras.contains(e),
                   onTap: () {
                     if (p.optionPriceOrNull(e) == null) {
-                      showToast(
+                      showErrorToast(
                         context,
                         'Configura primero el precio del extra.',
                       );

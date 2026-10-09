@@ -83,7 +83,7 @@ class _EditPurchaseSheetState extends State<_EditPurchaseSheet> {
     await store.removePurchase(p);
     if (!mounted) return;
     if (!mounted) return;
-    showToast(context, 'Compra eliminada', color: KColors.danger);
+    showToast(context, 'Compra eliminada');
     Navigator.of(context).pop();
   });
 

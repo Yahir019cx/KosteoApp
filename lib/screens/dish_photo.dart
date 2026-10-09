@@ -20,7 +20,13 @@ Future<void> editDishPhoto(BuildContext context, Product product) async {
   );
   if (!context.mounted || source == null) return;
   if (source == _remove) {
-    await runAction(context, () => store.setProductImage(product, null));
+    await runAction(
+      context,
+      () => store.setProductImage(product, null),
+      successMessage: product.draft
+          ? 'Foto quitada del borrador'
+          : 'Foto eliminada',
+    );
     return;
   }
   final file = await ImagePicker().pickImage(

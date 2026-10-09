@@ -22,7 +22,7 @@ Future<void> showProductCost(BuildContext context, Product product) async {
       );
     }
   } catch (e) {
-    if (context.mounted) showToast(context, e.toString());
+    if (context.mounted) showErrorToast(context, e.toString());
   }
 }
 

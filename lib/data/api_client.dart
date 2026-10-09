@@ -72,7 +72,19 @@ class ApiClient {
       final response = await (() async => http.Response.fromStream(
         await client.send(req),
       ))().timeout(const Duration(seconds: 30));
-      final data = response.body.isEmpty ? null : jsonDecode(response.body);
+      dynamic data;
+      if (response.body.trim().isNotEmpty) {
+        try {
+          data = jsonDecode(response.body);
+        } on FormatException {
+          if (response.statusCode < 400) {
+            throw ApiException(
+              'El servidor devolvió una respuesta inválida. Actualiza la vista antes de repetir la operación.',
+              response.statusCode,
+            );
+          }
+        }
+      }
       if (response.statusCode >= 400) {
         if (fingerprint != null && response.statusCode < 500) {
           _pendingKeys.remove(fingerprint);
@@ -81,7 +93,10 @@ class ApiClient {
         throw ApiException(
           message is List
               ? message.join('. ')
-              : (message?.toString() ?? 'No se pudo guardar.'),
+              : (message?.toString() ??
+                    (response.statusCode >= 500
+                        ? 'El servidor no pudo completar la operación. Intenta nuevamente.'
+                        : 'No se pudo completar la operación. Revisa los datos e intenta nuevamente.')),
           response.statusCode,
         );
       }
@@ -89,6 +104,10 @@ class ApiClient {
       return data;
     } on ApiException {
       rethrow;
+    } on TimeoutException {
+      throw ApiException(
+        'El servidor tardó demasiado. No se pudo confirmar la operación. Reintenta.',
+      );
     } catch (_) {
       throw ApiException('No se pudo conectar. Reintenta la operación.');
     } finally {

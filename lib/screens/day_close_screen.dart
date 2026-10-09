@@ -35,7 +35,11 @@ class _DayCloseScreenState extends State<DayCloseScreen> {
       helpText: 'Fechas de la jornada',
     );
     if (dates != null && mounted) {
-      await runAction(context, () => store.openShift(dates.start, dates.end));
+      await runAction(
+        context,
+        () => store.openShift(dates.start, dates.end),
+        successMessage: 'Jornada abierta',
+      );
     }
   }
 
@@ -70,7 +74,11 @@ class _DayCloseScreenState extends State<DayCloseScreen> {
     );
     if (ok != true || !mounted) return;
     HapticFeedback.heavyImpact();
-    await runAction(context, store.closeShift);
+    await runAction(
+      context,
+      store.closeShift,
+      successMessage: 'Jornada cerrada',
+    );
   }
 
   @override
@@ -192,7 +200,12 @@ class _DayCloseScreenState extends State<DayCloseScreen> {
                     ? money(gas)
                     : 'Sin reparto: toca para confirmar',
                 onTap: gas == 0 && !closed
-                    ? () => runAction(context, store.noGas)
+                    ? () => runAction(
+                        context,
+                        store.noGas,
+                        successMessage:
+                            'Jornada confirmada sin gasto de gasolina',
+                      )
                     : null,
               ),
               _Check(

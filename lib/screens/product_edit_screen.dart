@@ -137,7 +137,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     await runAction(context, () async {
       await store.removeProduct(_draft);
       if (!mounted) return;
-      showToast(context, '${_draft.name} eliminado', color: KColors.danger);
+      showToast(context, '${_draft.name} eliminado');
       Navigator.of(context).pop();
     });
   }

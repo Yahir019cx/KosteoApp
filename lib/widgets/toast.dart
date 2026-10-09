@@ -8,22 +8,38 @@ import 'glass.dart';
 
 OverlayEntry? _current;
 
+void showErrorToast(
+  BuildContext context,
+  String message, {
+  OverlayState? targetOverlay,
+}) => showToast(
+  context,
+  message,
+  icon: KIcons.alert,
+  color: KColors.danger,
+  duration: const Duration(seconds: 5),
+  targetOverlay: targetOverlay,
+);
+
 /// Confirmación flotante de vidrio que baja desde arriba y se va sola.
 void showToast(
   BuildContext context,
   String message, {
   IconData? icon,
   Color color = KColors.success,
+  Duration duration = const Duration(milliseconds: 2200),
+  OverlayState? targetOverlay,
 }) {
   HapticFeedback.mediumImpact();
   _current?.remove();
-  final overlay = Overlay.of(context, rootOverlay: true);
+  final overlay = targetOverlay ?? Overlay.of(context, rootOverlay: true);
   late OverlayEntry entry;
   entry = OverlayEntry(
     builder: (_) => _Toast(
       message: message,
       icon: icon ?? KIcons.checkCircleStrong,
       color: color,
+      duration: duration,
       onDone: () {
         if (_current == entry) _current = null;
         if (entry.mounted) entry.remove();
@@ -39,11 +55,13 @@ class _Toast extends StatefulWidget {
     required this.message,
     required this.icon,
     required this.color,
+    required this.duration,
     required this.onDone,
   });
   final String message;
   final IconData icon;
   final Color color;
+  final Duration duration;
   final VoidCallback onDone;
 
   @override
@@ -60,7 +78,7 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _c.forward();
-    Future.delayed(const Duration(milliseconds: 2200), () async {
+    Future.delayed(widget.duration, () async {
       if (!mounted) return;
       await _c.reverse();
       widget.onDone();
@@ -112,9 +130,12 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
                         Icon(widget.icon, color: widget.color, size: 24),
                         const SizedBox(width: KSpace.s),
                         Flexible(
-                          child: Text(
-                            widget.message,
-                            style: KText.bodyStrong.copyWith(fontSize: 14),
+                          child: Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              widget.message,
+                              style: KText.bodyStrong.copyWith(fontSize: 14),
+                            ),
                           ),
                         ),
                       ],

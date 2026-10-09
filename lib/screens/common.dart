@@ -1,10 +1,12 @@
 import '../data/app_store.dart';
+import '../data/api_client.dart';
 import '../widgets/toast.dart';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
+import '../theme/icons.dart';
 
 /// Navega con transición iOS (deslizar para regresar incluido).
 Future<T?> push<T>(BuildContext context, Widget screen) =>
@@ -79,15 +81,45 @@ class BottomActionBar extends StatelessWidget {
 
 Future<void> runAction(
   BuildContext context,
-  Future<void> Function() action,
-) async {
+  Future<void> Function() action, {
+  String? successMessage,
+}) async {
   if (store.saving) return;
+  final feedbackOverlay = Overlay.of(context, rootOverlay: true);
+  final feedbackContext = feedbackOverlay.context;
   store.saving = true;
+  store.error = null;
   store.productChanged();
   try {
     await action();
+    if (feedbackContext.mounted) {
+      if (store.error != null) {
+        showToast(
+          feedbackContext,
+          store.error!,
+          icon: KIcons.alert,
+          color: KColors.coral,
+          duration: const Duration(seconds: 5),
+          targetOverlay: feedbackOverlay,
+        );
+      } else if (successMessage != null) {
+        showToast(
+          feedbackContext,
+          successMessage,
+          targetOverlay: feedbackOverlay,
+        );
+      }
+    }
   } catch (e) {
-    if (context.mounted) showToast(context, e.toString());
+    if (feedbackContext.mounted) {
+      showErrorToast(
+        feedbackContext,
+        e is ApiException
+            ? e.message
+            : 'No se pudo completar la acción. Intenta nuevamente.',
+        targetOverlay: feedbackOverlay,
+      );
+    }
   } finally {
     store.saving = false;
     store.productChanged();

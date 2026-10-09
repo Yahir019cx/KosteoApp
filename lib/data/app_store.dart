@@ -371,7 +371,9 @@ String todayLabel() {
 
 String greeting() {
   final h = DateTime.now().hour;
-  return h < 12 ? 'Buenos días Yahir' : (h < 19 ? 'Buenas tardes Yahir' : 'Buenas noches Yahir');
+  return h < 12
+      ? 'Buenos días Yahir'
+      : (h < 19 ? 'Buenas tardes Yahir' : 'Buenas noches Yahir');
 }
 
 String nowTime() {
@@ -938,9 +940,22 @@ class KosteoStore extends ChangeNotifier {
       body: body,
     );
     p.id = r['platilloId'];
-    await persistPhoto(p);
-    await menu();
-    await refresh();
+    try {
+      await persistPhoto(p);
+    } on ApiException catch (e) {
+      throw ApiException(
+        'Producto guardado, pero no se pudo guardar la foto. ${e.message}',
+        e.status,
+      );
+    }
+    try {
+      await menu();
+      await refresh();
+      error = null;
+    } catch (_) {
+      error = 'Producto guardado. No se pudo actualizar la vista; vuelve a cargarla.';
+      notifyListeners();
+    }
   }
 
   Future<void> addProduct(Product p) => saveProduct(p);
