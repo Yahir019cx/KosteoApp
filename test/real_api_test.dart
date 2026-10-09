@@ -159,6 +159,21 @@ void main() {
             expect(saved.lines.first.qty, 2);
             expect(saved.total, 360.75);
             expect(saved.notes, 'Agrego uno mas');
+          } else {
+            await store.editOrder(
+              futuro,
+              futuro.lines.map((l) => l.copyForEditing()).toList(),
+              customer: 'Solo nombre actualizado',
+              notes: 'Solo notas sin agregar',
+            );
+            final saved = store.orders.firstWhere(
+              (o) => o.number == futuro.number,
+            );
+            expect(saved.customer, 'Solo nombre actualizado');
+            expect(saved.notes, 'Solo notas sin agregar');
+            expect(saved.lines.single.qty, 1);
+            expect(saved.total, 120.25);
+            expect(saved.jornadaId, isNull);
           }
           anticipados.add(futuro.number);
         }
