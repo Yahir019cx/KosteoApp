@@ -646,24 +646,23 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
           const SizedBox(height: KSpace.xl),
           const FieldLabel('Complementos'),
           if (p.sides.length > 1)
-            Text('Puedes elegir uno o ambos.', style: KText.caption),
-          Row(
-            children: [
-              for (final s in p.sides) ...[
-                if (s != p.sides.first) const SizedBox(width: KSpace.s),
-                Expanded(
-                  child: ChoiceTile(
-                    label: s,
-                    icon: s == 'Tostitos' ? KIcons.chips : KIcons.tostada,
-                    selected: _sides.contains(s),
-                    onTap: () => setState(() {
-                      if (!_sides.add(s)) _sides.remove(s);
-                    }),
+            Row(
+              children: [
+                for (final s in p.sides) ...[
+                  if (s != p.sides.first) const SizedBox(width: KSpace.s),
+                  Expanded(
+                    child: ChoiceTile(
+                      label: s,
+                      icon: s == 'Tostitos' ? KIcons.chips : KIcons.tostada,
+                      selected: _sides.contains(s),
+                      onTap: () => setState(() {
+                        if (!_sides.add(s)) _sides.remove(s);
+                      }),
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
-          ),
+            ),
           const SizedBox(height: KSpace.xl),
           const FieldLabel('Extras', optional: true),
           Wrap(

@@ -460,7 +460,10 @@ class _IngredientPickerState extends State<_IngredientPicker> {
                             children: [
                               Expanded(
                                 child: IgnorePointer(
-                                  child: IngredientRow(ingredient: items[i]),
+                                  child: IngredientRow(
+                                    ingredient: items[i],
+                                    showCost: false,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: KSpace.m),

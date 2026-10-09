@@ -149,8 +149,16 @@ class PurchaseRow extends StatelessWidget {
 
 /// Fila de catálogo de insumos: nombre, unidad de uso y último costo.
 class IngredientRow extends StatelessWidget {
-  const IngredientRow({super.key, required this.ingredient, this.onTap});
+  const IngredientRow({
+    super.key,
+    required this.ingredient,
+    this.onTap,
+    this.showCost = true,
+  });
   final Ingredient ingredient;
+
+  /// Último costo a la derecha; se oculta donde solo importa elegir.
+  final bool showCost;
   final VoidCallback? onTap;
 
   @override
@@ -177,7 +185,7 @@ class IngredientRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (i.lastCost != null)
+            if (showCost && i.lastCost != null)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
