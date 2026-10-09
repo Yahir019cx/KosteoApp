@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -7,6 +9,19 @@ import 'package:kosteo/data/api_client.dart';
 import 'package:kosteo/data/app_store.dart';
 
 void main() {
+  test('Piña opcional suma consumo, nunca un adicional de venta', () {
+    final p =
+        Product('Aguachile', 120, 'Aguachiles', Icons.restaurant, Colors.white)
+          ..options = [
+            {'tipo': 'EXTRA', 'nombre': 'Piña', 'precioAdicional': 99},
+          ];
+    expect(p.optionPrice('Piña'), 0);
+    expect(p.optionPriceOrNull('Piña'), 0);
+    p.options.first['precioAdicional'] = null;
+    expect(p.optionPriceOrNull('Piña'), 0);
+    expect(OrderLine(p, 1, extras: ['Piña']).total, 120);
+    expect(OrderLine(p, 1).total, 120);
+  });
   test(
     'Recargar el menú conserva precioVenta, centavos y pendientes',
     () async {

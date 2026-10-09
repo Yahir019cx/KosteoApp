@@ -10,6 +10,8 @@ import '../theme/tokens.dart';
 
 // ─────────────────────────── Modelos ───────────────────────────
 
+bool isOptionalIngredient(String name) => name.trim().toLowerCase() == 'piña';
+
 enum OrderStatus { pending, preparing, ready, delivering, delivered, cancelled }
 
 extension OrderStatusX on OrderStatus {
@@ -98,12 +100,15 @@ class Product {
       .where((o) => o['tipo'] == 'EXTRA')
       .map((o) => o['nombre'] as String)
       .toList();
-  num? optionPriceOrNull(String name) =>
-      options.firstWhere((o) => o['nombre'] == name)['precioAdicional'] as num?;
-  num optionPrice(String name) =>
-      options.firstWhere((o) => o['nombre'] == name)['precioAdicional']
-          as num? ??
-      0;
+  num? optionPriceOrNull(String name) => isOptionalIngredient(name)
+      ? 0
+      : options.firstWhere((o) => o['nombre'] == name)['precioAdicional']
+            as num?;
+  num optionPrice(String name) => isOptionalIngredient(name)
+      ? 0
+      : options.firstWhere((o) => o['nombre'] == name)['precioAdicional']
+                as num? ??
+            0;
   int presentationId(String? size) =>
       presentationIds[size] ?? presentationIds.values.first;
   Product copy() =>
@@ -917,18 +922,16 @@ class KosteoStore extends ChangeNotifier {
                       'nombre': 'Tostadas',
                       'precioAdicional': 0,
                     },
-                    {
-                      'tipo': 'EXTRA',
-                      'nombre': 'Piña',
-                      'precioAdicional': null,
-                    },
+                    {'tipo': 'EXTRA', 'nombre': 'Piña', 'precioAdicional': 0},
                   ]
                 : p.options
                       .map(
                         (o) => {
                           'tipo': o['tipo'],
                           'nombre': o['nombre'],
-                          'precioAdicional': o['precioAdicional'],
+                          'precioAdicional': isOptionalIngredient(o['nombre'])
+                              ? 0
+                              : o['precioAdicional'],
                         },
                       )
                       .toList())

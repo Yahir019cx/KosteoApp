@@ -154,7 +154,9 @@ class _CostSheetState extends State<_CostSheet> {
             (o) => {
               'tipo': o['tipo'],
               'nombre': o['nombre'],
-              'precioAdicional': o['opcionId'] == _option
+              'precioAdicional': isOptionalIngredient(o['nombre'])
+                  ? 0
+                  : o['opcionId'] == _option
                   ? num.tryParse(_additional.text.replaceAll(',', '.'))
                   : o['precioAdicional'],
             },
@@ -309,7 +311,10 @@ class _CostSheetState extends State<_CostSheet> {
         ),
         if (_option != null &&
             widget.product.options.any(
-              (o) => o['opcionId'] == _option && o['tipo'] == 'EXTRA',
+              (o) =>
+                  o['opcionId'] == _option &&
+                  o['tipo'] == 'EXTRA' &&
+                  !isOptionalIngredient(o['nombre']),
             )) ...[
           const SizedBox(height: KSpace.m),
           const FieldLabel('Precio del extra'),

@@ -573,7 +573,9 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
               for (final e in p.extras)
                 ChoiceTile(
                   label: e,
-                  caption: p.optionPriceOrNull(e) == null
+                  caption: isOptionalIngredient(e)
+                      ? 'Ingrediente opcional'
+                      : p.optionPriceOrNull(e) == null
                       ? 'Precio pendiente'
                       : '+${money(p.optionPrice(e))}',
                   icon: KIcons.fruit,
