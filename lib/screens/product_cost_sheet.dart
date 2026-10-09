@@ -102,7 +102,60 @@ class _CostSheetState extends State<_CostSheet> {
         .toList();
   }
 
+  String? get _optionIngredientName {
+    final name = widget.product.options
+        .where((o) => o['opcionId'] == _option)
+        .map((o) => o['nombre'] as String)
+        .firstOrNull;
+    return name != null &&
+            const {
+              'tostadas',
+              'tostitos',
+              'piña',
+              'mango',
+            }.contains(name.trim().toLowerCase())
+        ? name
+        : null;
+  }
+
+  void _appendIngredients(List<Ingredient> chosen) {
+    setState(
+      () => _components.addAll([
+        for (final i in chosen)
+          {
+            'insumoId': i.id,
+            'opcionId': _option,
+            'cantidad': null,
+            'unidadId': store.unitId(i.useUnit),
+          },
+      ]),
+    );
+  }
+
   Future<void> _add() async {
+    final name = _optionIngredientName;
+    if (name != null) {
+      final ingredient = store.ingredients
+          .where(
+            (i) =>
+                i.measurable &&
+                i.name.trim().toLowerCase() == name.trim().toLowerCase(),
+          )
+          .firstOrNull;
+      if (ingredient == null) {
+        showErrorToast(
+          context,
+          'Da de alta el insumo $name para configurar su cantidad.',
+        );
+        return;
+      }
+      if (!_components.any(
+        (c) => c['insumoId'] == ingredient.id && c['opcionId'] == _option,
+      )) {
+        _appendIngredients([ingredient]);
+      }
+      return;
+    }
     final chosen = await showGlassSheet<List<Ingredient>>(
       context,
       builder: (context) => _IngredientPicker(
@@ -118,17 +171,7 @@ class _CostSheetState extends State<_CostSheet> {
       ),
     );
     if (chosen != null && mounted) {
-      setState(
-        () => _components.addAll([
-          for (final i in chosen)
-            {
-              'insumoId': i.id,
-              'opcionId': _option,
-              'cantidad': null,
-              'unidadId': store.unitId(i.useUnit),
-            },
-        ]),
-      );
+      _appendIngredients(chosen);
     }
   }
 
@@ -228,7 +271,7 @@ class _CostSheetState extends State<_CostSheet> {
           runSpacing: KSpace.s,
           children: [
             ChoiceTile(
-              label: 'Base',
+              label: 'Siempre lleva',
               selected: _option == null,
               onTap: () => setState(() => _option = null),
             ),
@@ -242,6 +285,13 @@ class _CostSheetState extends State<_CostSheet> {
                 }),
               ),
           ],
+        ),
+        const SizedBox(height: KSpace.m),
+        Text(
+          _option == null
+              ? 'Insumos que siempre lleva esta presentación, sin importar el complemento.'
+              : 'Cantidad por producto de esta presentación, solo cuando el pedido lleva ${widget.product.options.firstWhere((o) => o['opcionId'] == _option)['nombre']}.',
+          style: KText.caption,
         ),
         const SizedBox(height: KSpace.m),
         for (final c in _components.where((c) => c['opcionId'] == _option))
@@ -295,7 +345,20 @@ class _CostSheetState extends State<_CostSheet> {
               ],
             ),
           ),
-        SoftButton(label: 'Agregar insumo', icon: KIcons.plus, onTap: _add),
+        if (_optionIngredientName == null ||
+            !_components.any(
+              (c) =>
+                  c['opcionId'] == _option &&
+                  store.ingredient(c['insumoId']).name.trim().toLowerCase() ==
+                      _optionIngredientName!.trim().toLowerCase(),
+            ))
+          SoftButton(
+            label: _optionIngredientName == null
+                ? 'Agregar insumo'
+                : 'Configurar $_optionIngredientName',
+            icon: KIcons.plus,
+            onTap: _add,
+          ),
         const SizedBox(height: KSpace.m),
         const FieldLabel('Salsas / condimentos por unidad'),
         KTextField(
