@@ -66,6 +66,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    - assets/fonts/logo/iconoKosteo.png
+
   # Tipografía empaquetada (funciona sin conexión).
   fonts:
     - family: PlusJakartaSans

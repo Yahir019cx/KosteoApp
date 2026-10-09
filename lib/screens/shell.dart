@@ -7,6 +7,7 @@ import '../theme/tokens.dart';
 import '../widgets/glass_bottom_bar.dart';
 import '../widgets/glass_sheet.dart';
 import '../widgets/rows.dart';
+import '../widgets/splash.dart';
 import 'common.dart';
 import 'dashboard_screen.dart';
 import 'day_close_screen.dart';
@@ -132,31 +133,6 @@ class _HomeShellState extends State<HomeShell> {
                     ),
                   ),
                 ),
-              if (store.loading || store.error != null)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: SafeArea(
-                    child: Material(
-                      color: KColors.white,
-                      child: ListTile(
-                        title: Text(store.loading ? 'Cargando…' : store.error!),
-                        trailing: store.loading
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : IconButton(
-                                icon: const Icon(KIcons.caretRight),
-                                onPressed: store.load,
-                              ),
-                      ),
-                    ),
-                  ),
-                ),
               Positioned(
                 left: 0,
                 right: 0,
@@ -167,6 +143,21 @@ class _HomeShellState extends State<HomeShell> {
                   onTab: _goTo,
                   onPlus: _openQuickActions,
                   plusOpen: _plusOpen,
+                ),
+              ),
+              // Splash con el logo hasta que termine la primera carga.
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: store.loaded,
+                  child: AnimatedOpacity(
+                    opacity: store.loaded ? 0 : 1,
+                    duration: const Duration(milliseconds: 450),
+                    curve: KMotion.ease,
+                    child: Splash(
+                      error: store.loading ? null : store.error,
+                      onRetry: store.load,
+                    ),
+                  ),
                 ),
               ),
             ],

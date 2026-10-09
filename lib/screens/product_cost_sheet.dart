@@ -8,6 +8,8 @@ import '../widgets/basics.dart';
 import '../widgets/chips.dart';
 import '../widgets/glass_sheet.dart';
 import '../widgets/inputs.dart';
+import '../widgets/motion.dart';
+import '../widgets/rows.dart';
 import '../widgets/toast.dart';
 import 'common.dart';
 
@@ -101,35 +103,31 @@ class _CostSheetState extends State<_CostSheet> {
   }
 
   Future<void> _add() async {
-    final chosen = await showGlassSheet<Ingredient>(
+    final chosen = await showGlassSheet<List<Ingredient>>(
       context,
-      builder: (context) => SheetBody(
-        title: 'Elegir insumo',
-        child: Column(
-          children: [
-            for (final i in store.ingredients.where(
+      builder: (context) => _IngredientPicker(
+        ingredients: store.ingredients
+            .where(
               (i) =>
                   i.measurable &&
                   !_components.any(
                     (c) => c['insumoId'] == i.id && c['opcionId'] == _option,
                   ),
-            ))
-              ListTile(
-                title: Text(i.name),
-                onTap: () => Navigator.of(context).pop(i),
-              ),
-          ],
-        ),
+            )
+            .toList(),
       ),
     );
     if (chosen != null && mounted) {
       setState(
-        () => _components.add({
-          'insumoId': chosen.id,
-          'opcionId': _option,
-          'cantidad': null,
-          'unidadId': store.unitId(chosen.useUnit),
-        }),
+        () => _components.addAll([
+          for (final i in chosen)
+            {
+              'insumoId': i.id,
+              'opcionId': _option,
+              'cantidad': null,
+              'unidadId': store.unitId(i.useUnit),
+            },
+        ]),
       );
     }
   }
@@ -353,4 +351,164 @@ class _CostSheetState extends State<_CostSheet> {
       ],
     ),
   );
+}
+
+/// Selector de insumo: una categoría a la vez; al buscar, busca en todas.
+class _IngredientPicker extends StatefulWidget {
+  const _IngredientPicker({required this.ingredients});
+  final List<Ingredient> ingredients;
+
+  @override
+  State<_IngredientPicker> createState() => _IngredientPickerState();
+}
+
+class _IngredientPickerState extends State<_IngredientPicker> {
+  final _query = TextEditingController();
+  late final _categories = [
+    for (final c in IngredientCategory.values)
+      if (widget.ingredients.any((i) => i.category == c)) c,
+  ];
+  late IngredientCategory? _cat = _categories.firstOrNull;
+  final _selected = <Ingredient>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _query.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _query.text.trim().toLowerCase();
+    final searching = q.isNotEmpty;
+    final items = widget.ingredients
+        .where(
+          (i) =>
+              searching ? i.name.toLowerCase().contains(q) : i.category == _cat,
+        )
+        .toList();
+    final body = SheetBody(
+      title: 'Elegir insumos',
+      subtitle: 'Toca los que quieras y agrégalos juntos.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          KTextField(
+            controller: _query,
+            hint: 'Buscar insumo',
+            icon: KIcons.magnifyingGlass,
+          ),
+          const SizedBox(height: KSpace.m),
+          AnimatedOpacity(
+            duration: KMotion.base,
+            opacity: searching ? 0.4 : 1,
+            child: Wrap(
+              spacing: KSpace.s,
+              runSpacing: KSpace.s,
+              children: [
+                for (final c in _categories)
+                  CategoryChip(
+                    label: c.label,
+                    icon: c.icon,
+                    count: widget.ingredients
+                        .where((i) => i.category == c)
+                        .length,
+                    selected: !searching && c == _cat,
+                    onTap: () => setState(() {
+                      _cat = c;
+                      _query.clear();
+                    }),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: KSpace.s),
+          AnimatedSize(
+            duration: KMotion.base,
+            curve: KMotion.ease,
+            alignment: Alignment.topCenter,
+            child: items.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: KSpace.xl),
+                    child: Text(
+                      searching
+                          ? 'Sin resultados para "${_query.text.trim()}"'
+                          : 'No hay insumos disponibles',
+                      style: KText.caption,
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                : Column(
+                    key: ValueKey(searching ? 'q:$q' : _cat),
+                    children: [
+                      for (var i = 0; i < items.length; i++) ...[
+                        if (i > 0) const InsetDivider(indent: 52),
+                        Pressable(
+                          onTap: () => setState(
+                            () =>
+                                _selected.remove(items[i]) ||
+                                _selected.add(items[i]),
+                          ),
+                          scale: 0.98,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: IgnorePointer(
+                                  child: IngredientRow(ingredient: items[i]),
+                                ),
+                              ),
+                              const SizedBox(width: KSpace.m),
+                              AnimatedSwitcher(
+                                duration: KMotion.fast,
+                                child: Icon(
+                                  _selected.contains(items[i])
+                                      ? KIcons.checkCircleStrong
+                                      : KIcons.checkCircle,
+                                  key: ValueKey(_selected.contains(items[i])),
+                                  size: 24,
+                                  color: _selected.contains(items[i])
+                                      ? KColors.sea
+                                      : KColors.inkMuted.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+    // Botón fijo abajo para no tener que bajar hasta el final de la lista.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(child: body),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(KSpace.xl, KSpace.m, KSpace.xl, 0),
+          child: PrimaryButton(
+            label: _selected.isEmpty
+                ? 'Elige insumos'
+                : _selected.length == 1
+                ? 'Agregar 1 insumo'
+                : 'Agregar ${_selected.length} insumos',
+            icon: KIcons.plusStrong,
+            onTap: _selected.isEmpty
+                ? null
+                : () => Navigator.of(context).pop(_selected.toList()),
+          ),
+        ),
+      ],
+    );
+  }
 }

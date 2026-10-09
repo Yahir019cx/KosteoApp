@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
+import '../data/app_store.dart';
 import '../theme/tokens.dart';
 
 /// Overlay de pantalla completa mientras haya peticiones a la API en curso:
@@ -28,7 +30,8 @@ class _ApiActivityState extends State<ApiActivity> {
   }
 
   void _onChange() {
-    if (ApiClient.pending.value > 0) {
+    // Durante la primera carga ya se ve el splash con el logo.
+    if (ApiClient.pending.value > 0 && store.loaded) {
       if (!_blocking) {
         // Las peticiones pueden empezar durante un build.
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,25 +73,81 @@ class _ApiActivityState extends State<ApiActivity> {
               duration: KMotion.fast,
               child: ColoredBox(
                 color: KColors.ink.withValues(alpha: 0.35),
-                child: Center(
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    padding: const EdgeInsets.all(KSpace.l),
-                    decoration: BoxDecoration(
-                      color: KColors.white,
-                      borderRadius: BorderRadius.circular(KRadius.card),
-                    ),
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: KColors.sea,
-                    ),
-                  ),
-                ),
+                child: const Center(child: BouncingDots()),
               ),
             ),
           ),
         ),
     ],
   );
+}
+
+/// Cinco bolitas que suben y bajan una tras otra, como ola.
+class BouncingDots extends StatefulWidget {
+  const BouncingDots({super.key});
+
+  @override
+  State<BouncingDots> createState() => _BouncingDotsState();
+}
+
+class _BouncingDotsState extends State<BouncingDots>
+    with SingleTickerProviderStateMixin {
+  static const _count = 5;
+  static const _size = 12.0;
+  static const _jump = 14.0;
+
+  /// Del cian al azul profundo, como el logo.
+  static const _colors = [
+    Color(0xFF3FE6F2),
+    Color(0xFF22C3EC),
+    KColors.sea,
+    KColors.seaDeep,
+    Color(0xFF1858C8),
+  ];
+
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: _size + _jump,
+    child: AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < _count; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Transform.translate(
+              offset: Offset(0, -_jump * _lift(i)),
+              child: Container(
+                width: _size,
+                height: _size,
+                decoration: BoxDecoration(
+                  color: _colors[i],
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+
+  /// 0..1: cada bolita salta en su turno y descansa el resto del ciclo.
+  double _lift(int i) {
+    final t = (_controller.value - i * 0.12) % 1;
+    const span = 0.4;
+    return t < span ? math.sin(t / span * math.pi) : 0;
+  }
 }
