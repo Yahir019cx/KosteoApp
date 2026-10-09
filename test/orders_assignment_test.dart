@@ -75,14 +75,14 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.text('Sin jornada'), findsNWidgets(2));
-        await tester.tap(find.bySemanticsLabel('Seleccionar sin jornada'));
+        await tester.tap(find.bySemanticsLabel('Seleccionar pedidos'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Seleccionar').first);
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Seleccionar'));
         await tester.tap(find.text('Seleccionar'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Asignar 2 a jornada'));
+        await tester.tap(find.text('Asignar jornada'));
         await tester.pumpAndSettle();
         expect(
           find.textContaining('Todavía no hay jornada abierta'),
@@ -98,7 +98,7 @@ void main() {
             'fechaFin': '2026-10-11',
           },
         ];
-        await tester.tap(find.text('Asignar 2 a jornada'));
+        await tester.tap(find.text('Asignar jornada'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('2026-10-10 · 2026-10-11'));
         await tester.pumpAndSettle();

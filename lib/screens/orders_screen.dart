@@ -13,6 +13,7 @@ import '../widgets/toast.dart';
 import '../widgets/glass_sheet.dart';
 import 'common.dart';
 import 'new_order_screen.dart';
+import 'order_ingredients_sheet.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -41,8 +42,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         final filter = store.ordersFilter.value;
         final q = _query.text.trim().toLowerCase();
         final list = store.ordersBy(filter).where((o) {
-          if (_selecting &&
-              (o.jornadaId != null || o.status != OrderStatus.pending)) {
+          if (_selecting && o.status != OrderStatus.pending) {
             return false;
           }
           if (q.isEmpty) return true;
@@ -61,16 +61,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     '${store.orders.length} pedidos · ${store.countBy(OrderStatus.pending)} por atender',
                 actions: [
                   if (_selecting ||
-                      store.orders.any(
-                        (o) =>
-                            o.jornadaId == null &&
-                            o.status == OrderStatus.pending,
-                      ))
+                      store.orders.any((o) => o.status == OrderStatus.pending))
                     CircleIconButton(
                       icon: _selecting ? KIcons.x : KIcons.checks,
                       semanticLabel: _selecting
                           ? 'Terminar selección'
-                          : 'Seleccionar sin jornada',
+                          : 'Seleccionar pedidos',
                       onTap: () => setState(() {
                         _selecting = !_selecting;
                         _selected.clear();
@@ -144,10 +140,42 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     horizontal: context.gutter,
                     vertical: KSpace.s,
                   ),
-                  child: SoftButton(
-                    label: 'Asignar ${_selected.length} a jornada',
-                    icon: KIcons.checks,
-                    onTap: _selected.isEmpty ? null : _assign,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '${_selected.length} pedidos seleccionados',
+                        style: KText.caption,
+                      ),
+                      const SizedBox(height: KSpace.s),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SoftButton(
+                              label: 'Ver insumos',
+                              icon: KIcons.menu,
+                              onTap: _selected.isEmpty ? null : _ingredients,
+                            ),
+                          ),
+                          const SizedBox(width: KSpace.s),
+                          Expanded(
+                            child: SoftButton(
+                              label: 'Asignar jornada',
+                              icon: KIcons.checks,
+                              onTap:
+                                  _selected.isEmpty ||
+                                      store.orders.any(
+                                        (o) =>
+                                            _selected.contains(o.number) &&
+                                            o.jornadaId != null,
+                                      )
+                                  ? null
+                                  : _assign,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -187,9 +215,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _advance(Order o) async {
-    if (o.jornadaId == null && o.status == OrderStatus.pending) {
+    if ((_selecting || o.jornadaId == null) &&
+        o.status == OrderStatus.pending) {
       if (!_selected.contains(o.number) && _selected.length >= 100) {
-        showErrorToast(context, 'Selecciona hasta 100 pedidos por asignación.');
+        showErrorToast(context, 'Selecciona hasta 100 pedidos.');
         return;
       }
       setState(() {
@@ -252,6 +281,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
       ),
     );
   }
+
+  Future<void> _ingredients() => runAction(context, () async {
+    final data = await store.orderIngredients(_selected.toList());
+    if (!mounted) return;
+    await showGlassSheet<void>(
+      context,
+      builder: (_) => OrderIngredientsSheet(data: data),
+    );
+  });
 
   Widget _empty(OrderStatus s) => EmptyState(
     icon: s == OrderStatus.delivered ? KIcons.flag : KIcons.waves,

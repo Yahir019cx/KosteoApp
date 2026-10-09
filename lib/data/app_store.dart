@@ -464,7 +464,7 @@ class KosteoStore extends ChangeNotifier {
   final List<Purchase> purchases = [];
   final List<LeftoverItem> leftovers = [];
   final List<num> gasEntries = [];
-  List<dynamic> units = [], categories = [], jornadas = [], recentClients = [];
+  List<dynamic> units = [], categories = [], jornadas = [];
   Map<String, dynamic>? jornada;
   int? selectedJornadaId;
   String? inventoryRead;
@@ -697,7 +697,6 @@ class KosteoStore extends ChangeNotifier {
           ..revision = r['revision'],
       );
     }
-    recentClients = await api.get('/pedidos/clientes-recientes');
     gasEntries.clear();
     for (final g
         in await api.get('/gastos-reparto', {'jornadaId': jornadaId}) as List) {
@@ -988,6 +987,15 @@ class KosteoStore extends ChangeNotifier {
     '/pedidos/jornada',
     {'pedidoIds': ids, 'jornadaId': jornada},
   );
+
+  Future<Map<String, dynamic>> orderIngredients(List<int> ids) async =>
+      Map<String, dynamic>.from(
+        await api.request(
+          'POST',
+          '/pedidos/insumos-resumen',
+          body: {'pedidoIds': ids},
+        ),
+      );
 
   List<(Product, int)> get topSellers => metrics[dashboardPeriod]!.sellers
       .map(

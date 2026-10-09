@@ -784,21 +784,6 @@ class _CustomerSheetState extends State<_CustomerSheet> {
         ],
         const SizedBox(height: KSpace.m),
         KTextField(controller: _notes, hint: 'Notas (opcional)'),
-        const SizedBox(height: KSpace.m),
-        Wrap(
-          spacing: KSpace.s,
-          children: [
-            for (final r in store.recentClients)
-              ChoiceTile(
-                label: r['cliente'] ?? r['telefono'] ?? '',
-                selected: false,
-                onTap: () {
-                  _name.text = r['cliente'] ?? '';
-                  _phone.text = r['telefono'] ?? '';
-                },
-              ),
-          ],
-        ),
         const SizedBox(height: KSpace.l),
         PrimaryButton(
           label: 'Listo',
