@@ -78,7 +78,8 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
         (e) =>
             e.product == l.product &&
             e.size == l.size &&
-            e.side == l.side &&
+            e.sides.length == l.sides.length &&
+            e.sides.toSet().containsAll(l.sides) &&
             e.extras.join() == l.extras.join(),
       );
       if (same.isNotEmpty) {
@@ -542,7 +543,7 @@ class _CartContents extends StatelessWidget {
   }
 }
 
-/// Sheet pequeña: complemento (uno), extras (varios) y cantidad. Todo con toques.
+/// Sheet pequeña: complementos, extras y cantidad. Todo con toques.
 class _ProductOptionsSheet extends StatefulWidget {
   const _ProductOptionsSheet({required this.product, this.size});
   final Product product;
@@ -553,14 +554,16 @@ class _ProductOptionsSheet extends StatefulWidget {
 }
 
 class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
-  late String? _side = widget.product.sides.firstOrNull;
+  late final Set<String> _sides = {
+    if (widget.product.sides.isNotEmpty) widget.product.sides.first,
+  };
   final Set<String> _extras = {};
   int _qty = 1;
 
   num get _total =>
       ((widget.product.priceFor(widget.size) ?? 0) +
           _extras.fold<num>(0, (v, e) => v + widget.product.optionPrice(e)) +
-          (_side == null ? 0 : widget.product.optionPrice(_side!))) *
+          _sides.fold<num>(0, (v, s) => v + widget.product.optionPrice(s))) *
       _qty;
 
   @override
@@ -577,7 +580,9 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
             child: DishImage(product: p, radius: KRadius.card),
           ),
           const SizedBox(height: KSpace.xl),
-          const FieldLabel('Complemento'),
+          const FieldLabel('Complementos'),
+          if (p.sides.length > 1)
+            Text('Puedes elegir uno o ambos.', style: KText.caption),
           Row(
             children: [
               for (final s in p.sides) ...[
@@ -586,8 +591,10 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
                   child: ChoiceTile(
                     label: s,
                     icon: s == 'Tostitos' ? KIcons.chips : KIcons.tostada,
-                    selected: _side == s,
-                    onTap: () => setState(() => _side = s),
+                    selected: _sides.contains(s),
+                    onTap: () => setState(() {
+                      if (!_sides.add(s)) _sides.remove(s);
+                    }),
                   ),
                 ),
               ],
@@ -638,15 +645,17 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
               Expanded(
                 child: PrimaryButton(
                   label: 'Agregar · ${money(_total)}',
-                  onTap: () => Navigator.of(context).pop(
-                    OrderLine(
-                      p,
-                      _qty,
-                      size: widget.size,
-                      side: _side,
-                      extras: _extras.toList(),
-                    ),
-                  ),
+                  onTap: p.sides.isNotEmpty && _sides.isEmpty
+                      ? null
+                      : () => Navigator.of(context).pop(
+                          OrderLine(
+                            p,
+                            _qty,
+                            size: widget.size,
+                            sides: p.sides.where(_sides.contains).toList(),
+                            extras: _extras.toList(),
+                          ),
+                        ),
                 ),
               ),
             ],

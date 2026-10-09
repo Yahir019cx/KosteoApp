@@ -13,6 +13,7 @@ import 'package:kosteo/screens/new_order_screen.dart';
 import 'package:kosteo/screens/new_purchase_screen.dart';
 import 'package:kosteo/screens/shell.dart';
 import 'package:kosteo/theme/tokens.dart';
+import 'package:kosteo/widgets/chips.dart';
 
 /// Renderiza cada pantalla en teléfono y tablet y falla si hay errores
 /// de layout (overflow, constraints) o excepciones.
@@ -169,6 +170,19 @@ void main() {
       await tester.tap(find.text('Aguachile Verde'));
       await _settle(tester);
       await _shot('product_options_${size.key}');
+      ChoiceTile choice(String name) => tester.widget<ChoiceTile>(
+        find.byWidgetPredicate((w) => w is ChoiceTile && w.label == name),
+      );
+      await tester.tap(find.text('Tostadas'));
+      await _settle(tester);
+      expect(choice('Tostitos').selected, isTrue);
+      expect(choice('Tostadas').selected, isTrue);
+      await tester.tap(find.text('Tostitos'));
+      await _settle(tester);
+      expect(choice('Tostitos').selected, isFalse);
+      expect(choice('Tostadas').selected, isTrue);
+      await tester.tap(find.text('Tostitos'));
+      await _settle(tester);
       await tester.tap(find.textContaining('Agregar ·'));
       await _settle(tester);
       await _shot('new_order_cart_${size.key}');

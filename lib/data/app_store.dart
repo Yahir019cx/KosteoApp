@@ -134,13 +134,15 @@ class OrderLine {
     this.product,
     this.qty, {
     this.size,
-    this.side,
+    String? side,
+    List<String>? sides,
     this.extras = const [],
-  });
+  }) : sides = List<String>.unmodifiable((sides ?? [?side]).toSet());
   final Product product;
   int qty;
   final String? size;
-  final String? side;
+  final List<String> sides;
+  String? get side => sides.firstOrNull;
   final List<String> extras;
 
   num? historicalPrice;
@@ -152,12 +154,12 @@ class OrderLine {
       historicalPrice ??
       (product.priceFor(size) ?? 0) +
           extras.fold<num>(0, (v, e) => v + product.optionPrice(e)) +
-          (side == null ? 0 : product.optionPrice(side!));
+          sides.fold<num>(0, (v, s) => v + product.optionPrice(s));
   num get total => unitPrice * qty;
   String get name =>
       historicalName ??
       (size == null ? product.name : '${product.name} ${size!.toLowerCase()}');
-  String get detail => [?side, ...extras.map((e) => '+ $e')].join(' · ');
+  String get detail => [...sides, ...extras.map((e) => '+ $e')].join(' · ');
 }
 
 class Order {
@@ -638,10 +640,10 @@ class KosteoStore extends ChangeNotifier {
               pr,
               (l['cantidad'] as num).toInt(),
               size: l['nombrePresentacion'],
-              side: opts
+              sides: opts
                   .where((o) => o['tipo'] == 'COMPLEMENTO')
                   .map((o) => o['nombre'] as String)
-                  .firstOrNull,
+                  .toList(),
               extras: opts
                   .where((o) => o['tipo'] == 'EXTRA')
                   .map((o) => o['nombre'] as String)
@@ -869,7 +871,7 @@ class KosteoStore extends ChangeNotifier {
                 'opciones': l.product.options
                     .where(
                       (o) =>
-                          o['nombre'] == l.side ||
+                          l.sides.contains(o['nombre']) ||
                           l.extras.contains(o['nombre']),
                     )
                     .map((o) => o['opcionId'])

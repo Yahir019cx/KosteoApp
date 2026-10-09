@@ -9,6 +9,38 @@ import 'package:kosteo/data/api_client.dart';
 import 'package:kosteo/data/app_store.dart';
 
 void main() {
+  test(
+    'Una línea permite ambos complementos y conserva el precio histórico',
+    () {
+      final p =
+          Product(
+              'Aguachile',
+              120,
+              'Aguachiles',
+              Icons.restaurant,
+              Colors.white,
+            )
+            ..options = [
+              {
+                'tipo': 'COMPLEMENTO',
+                'nombre': 'Tostitos',
+                'precioAdicional': 0,
+              },
+              {
+                'tipo': 'COMPLEMENTO',
+                'nombre': 'Tostadas',
+                'precioAdicional': 0,
+              },
+            ];
+      final line = OrderLine(p, 2, sides: ['Tostitos', 'Tostadas']);
+      expect(line.detail, 'Tostitos · Tostadas');
+      expect(line.total, 240);
+      line.historicalPrice = 120;
+      p.options[1]['precioAdicional'] = 20;
+      expect(line.total, 240);
+      expect(OrderLine(p, 1, side: 'Tostitos').sides, ['Tostitos']);
+    },
+  );
   test('Piña opcional suma consumo, nunca un adicional de venta', () {
     final p =
         Product('Aguachile', 120, 'Aguachiles', Icons.restaurant, Colors.white)

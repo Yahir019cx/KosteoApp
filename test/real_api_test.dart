@@ -122,10 +122,19 @@ void main() {
         final anticipados = <int>[];
         for (var i = 0; i < 2; i++) {
           final futuro = await store.addOrder([
-            OrderLine(p, 1, size: 'Individual', side: 'Tostitos'),
+            OrderLine(
+              p,
+              1,
+              size: 'Individual',
+              sides: i == 0 ? ['Tostitos', 'Tostadas'] : ['Tostitos'],
+            ),
           ], sinJornada: true);
           expect(futuro.jornadaId, isNull);
           expect(futuro.status, OrderStatus.pending);
+          expect(
+            futuro.lines.single.sides.toSet(),
+            i == 0 ? {'Tostitos', 'Tostadas'} : {'Tostitos'},
+          );
           anticipados.add(futuro.number);
         }
         await store.asignarPedidos(anticipados, store.jornadaAbiertaId!);
