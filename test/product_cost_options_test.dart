@@ -32,9 +32,13 @@ void main() {
     await font.load();
   });
   for (final width in [390.0, 1194.0]) {
-    testWidgets(
-      'Costeo directo de opción y cantidades por presentación ($width)',
-      (tester) async {
+    for (final scenario in [
+      'normal',
+      'preview-error',
+      'refresh-error',
+      'duplicate',
+    ]) {
+      testWidgets('Costeo y borradores ($width, $scenario)', (tester) async {
         tester.view.physicalSize = Size(width, 1100);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
@@ -58,7 +62,15 @@ void main() {
               'configuracionCosteoConfirmada': false,
             },
           ],
-          'componentes': <dynamic>[],
+          'componentes': <dynamic>[
+            if (scenario == 'duplicate')
+              {
+                'presentacionId': 1,
+                'insumoId': 1,
+                'opcionId': null,
+                'cantidadUso': 2,
+              },
+          ],
         };
         final api = ApiClient(
           client: MockClient((r) async {
@@ -79,6 +91,16 @@ void main() {
                 ),
               );
               return http.Response('{}', 200);
+            }
+            if (saved.isNotEmpty &&
+                ((scenario == 'preview-error' &&
+                        r.url.path.endsWith('/costo')) ||
+                    (scenario == 'refresh-error' &&
+                        r.url.path.endsWith('/componentes')))) {
+              return http.Response(
+                '{"message":"Fallo de actualización de prueba"}',
+                503,
+              );
             }
             return http.Response(
               jsonEncode(
@@ -169,8 +191,51 @@ void main() {
           ),
           '5',
         );
+        // Cambiar de presentación sin guardar conserva el borrador completo.
+        await tester.ensureVisible(
+          find.widgetWithText(ChoiceTile, 'Pa Compartir'),
+        );
+        await tester.tap(find.widgetWithText(ChoiceTile, 'Pa Compartir'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.widgetWithText(ChoiceTile, 'Individual'),
+        );
+        await tester.tap(find.widgetWithText(ChoiceTile, 'Individual'));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<TextField>(
+                find.descendant(
+                  of: find.byKey(const ValueKey('1-1-1')),
+                  matching: find.byType(TextField),
+                ),
+              )
+              .controller!
+              .text,
+          '5',
+        );
+        expect(saved, isEmpty);
         await tester.ensureVisible(find.text('Guardar costeo'));
         await tester.tap(find.text('Guardar costeo'));
+        await tester.pumpAndSettle();
+        if (scenario == 'duplicate') {
+          expect(saved, isEmpty);
+          expect(find.text('Revisa las cantidades'), findsOneWidget);
+          await tester.tap(find.text('Revisar'));
+          await tester.pumpAndSettle();
+          expect(saved, isEmpty);
+          await tester.tap(find.text('Guardar costeo'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Guardar así'));
+          await tester.pumpAndSettle();
+        }
+        if (scenario.endsWith('error')) {
+          expect(
+            find.textContaining('Cantidades guardadas. No se pudo'),
+            findsOneWidget,
+          );
+        }
+        await tester.pump(const Duration(seconds: 6));
         await tester.pumpAndSettle();
         expect(saved.last['presentacionId'], 1);
         expect(
@@ -205,10 +270,10 @@ void main() {
           )['cantidadUso'],
           5,
         );
-        await tester.pump(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 6));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-      },
-    );
+      });
+    }
   }
 }

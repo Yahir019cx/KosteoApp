@@ -54,6 +54,9 @@ class _CostSheetState extends State<_CostSheet> {
   int? _option;
   Map<String, dynamic>? _preview;
   final _additional = TextEditingController();
+  final _drafts = <int, Map<String, dynamic>>{};
+  final _extraPrices = <int, String>{};
+  bool _selectedOnce = false;
   @override
   void initState() {
     super.initState();
@@ -61,26 +64,41 @@ class _CostSheetState extends State<_CostSheet> {
   }
 
   void _select(int id) {
+    if (_selectedOnce && store.saving) return;
+    if (_selectedOnce) {
+      _drafts[_id] = {
+        'componentes': _components,
+        'fijo': _fixed.text,
+        'confirmada': _confirmed,
+      };
+    }
+    _selectedOnce = true;
     for (final c in _quantities.values) {
       c.dispose();
     }
     _quantities.clear();
     _id = id;
     final p = _presentations.firstWhere((p) => p['presentacionId'] == id);
-    _fixed.text = p['costoFijoCondimentos']?.toString() ?? '';
-    _confirmed = p['configuracionCosteoConfirmada'] == true;
+    final draft = _drafts[id];
+    _fixed.text = draft?['fijo'] ?? p['costoFijoCondimentos']?.toString() ?? '';
+    _confirmed =
+        draft?['confirmada'] ?? p['configuracionCosteoConfirmada'] == true;
     _preview = null;
-    _components = (widget.data['componentes'] as List)
-        .where((c) => c['presentacionId'] == id)
-        .map(
-          (c) => <String, dynamic>{
-            'insumoId': c['insumoId'],
-            'opcionId': c['opcionId'],
-            'cantidad': c['cantidadUso'],
-            'unidadId': store.unitId(store.ingredient(c['insumoId']).useUnit),
-          },
-        )
-        .toList();
+    _components = draft != null
+        ? List<Map<String, dynamic>>.from(draft['componentes'])
+        : (widget.data['componentes'] as List)
+              .where((c) => c['presentacionId'] == id)
+              .map(
+                (c) => <String, dynamic>{
+                  'insumoId': c['insumoId'],
+                  'opcionId': c['opcionId'],
+                  'cantidad': c['cantidadUso'],
+                  'unidadId': store.unitId(
+                    store.ingredient(c['insumoId']).useUnit,
+                  ),
+                },
+              )
+              .toList();
   }
 
   @override
@@ -116,6 +134,21 @@ class _CostSheetState extends State<_CostSheet> {
             }.contains(name.trim().toLowerCase())
         ? name
         : null;
+  }
+
+  void _chooseOption(int? id) {
+    if (store.saving) return;
+    setState(() {
+      if (_option != null) {
+        _extraPrices[_option!] = _additional.text;
+      }
+      _option = id;
+      final option = widget.product.options
+          .where((o) => o['opcionId'] == id)
+          .firstOrNull;
+      _additional.text =
+          _extraPrices[id] ?? option?['precioAdicional']?.toString() ?? '';
+    });
   }
 
   void _appendIngredients(List<Ingredient> chosen) {
@@ -175,77 +208,137 @@ class _CostSheetState extends State<_CostSheet> {
     }
   }
 
-  Future<void> _save() => runAction(context, () async {
-    await store.api.request(
-      'PUT',
-      '/platillos/${widget.product.id}/componentes',
-      body: {
-        'presentacionId': _id,
-        'componentes': _components,
-        'costoFijoCondimentos': num.tryParse(_fixed.text.replaceAll(',', '.')),
-        'confirmada': _confirmed,
-      },
-    );
-    if (_option != null &&
-        widget.product.options.any(
-          (o) => o['opcionId'] == _option && o['tipo'] == 'EXTRA',
-        )) {
-      final options = widget.product.options
-          .map(
-            (o) => {
-              'tipo': o['tipo'],
-              'nombre': o['nombre'],
-              'precioAdicional': isOptionalIngredient(o['nombre'])
-                  ? 0
-                  : o['opcionId'] == _option
-                  ? num.tryParse(_additional.text.replaceAll(',', '.'))
-                  : o['precioAdicional'],
-            },
-          )
-          .toList();
-      await store.api.request(
-        'PATCH',
-        '/platillos/${widget.product.id}',
-        body: {'opciones': options},
-      );
-    }
-    final options = _option == null
-        ? widget.product.options
-              .where((o) => o['tipo'] == 'COMPLEMENTO')
-              .take(1)
-              .map((o) => o['opcionId'])
-              .toList()
-        : [
-            if (widget.product.options.any(
-              (o) => o['opcionId'] == _option && o['tipo'] == 'EXTRA',
-            ))
-              ...widget.product.options
-                  .where((o) => o['tipo'] == 'COMPLEMENTO')
-                  .take(1)
-                  .map((o) => o['opcionId']),
-            _option,
-          ];
-    final preview = await store.api.get(
-      '/platillos/${widget.product.id}/costo',
-      {'presentacionId': _id, 'opciones': '[${options.join(',')}]'},
-    );
-    final fresh = await store.api.get(
-      '/platillos/${widget.product.id}/componentes',
-    );
-    widget.data['componentes'] = fresh['componentes'];
-    for (final p in _presentations) {
-      p.addAll(
-        (fresh['presentaciones'] as List).firstWhere(
-          (v) => v['presentacionId'] == p['presentacionId'],
+  List<String> get _duplicateIngredients {
+    final base = _components
+        .where((c) => c['opcionId'] == null)
+        .map((c) => c['insumoId'])
+        .toSet();
+    final active = widget.product.options.map((o) => o['opcionId']).toSet();
+    return _components
+        .where(
+          (c) =>
+              c['opcionId'] != null &&
+              active.contains(c['opcionId']) &&
+              base.contains(c['insumoId']),
+        )
+        .map((c) => store.ingredient(c['insumoId']).name)
+        .toSet()
+        .toList();
+  }
+
+  Future<void> _save() async {
+    if (store.saving) return;
+    final duplicates = _duplicateIngredients;
+    if (duplicates.isNotEmpty) {
+      final proceed = await showGlassSheet<bool>(
+        context,
+        builder: (context) => SheetBody(
+          title: 'Revisa las cantidades',
+          subtitle:
+              '${duplicates.join(', ')} está en Siempre lleva y también en una opción. Al elegirla se sumarán ambas cantidades.',
+          child: Column(
+            children: [
+              SoftButton(
+                label: 'Revisar',
+                onTap: () => Navigator.of(context).pop(false),
+              ),
+              const SizedBox(height: KSpace.s),
+              PrimaryButton(
+                label: 'Guardar así',
+                onTap: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          ),
         ),
       );
+      if (proceed != true || !mounted) return;
     }
-    await store.menu();
-    await store.refresh();
-    if (!mounted) return;
-    setState(() => _preview = Map<String, dynamic>.from(preview));
-    showToast(context, 'Cantidades guardadas');
-  });
+    await runAction(context, () async {
+      await store.api.request(
+        'PUT',
+        '/platillos/${widget.product.id}/componentes',
+        body: {
+          'presentacionId': _id,
+          'componentes': _components,
+          'costoFijoCondimentos': num.tryParse(
+            _fixed.text.replaceAll(',', '.'),
+          ),
+          'confirmada': _confirmed,
+        },
+      );
+      var stage = 'actualizar la vista';
+      try {
+        if (_option != null &&
+            widget.product.options.any(
+              (o) =>
+                  o['opcionId'] == _option &&
+                  o['tipo'] == 'EXTRA' &&
+                  !isOptionalIngredient(o['nombre']),
+            )) {
+          stage = 'guardar el precio del extra';
+          final options = widget.product.options
+              .map(
+                (o) => {
+                  'tipo': o['tipo'],
+                  'nombre': o['nombre'],
+                  'precioAdicional': isOptionalIngredient(o['nombre'])
+                      ? 0
+                      : o['opcionId'] == _option
+                      ? num.tryParse(_additional.text.replaceAll(',', '.'))
+                      : o['precioAdicional'],
+                },
+              )
+              .toList();
+          await store.api.request(
+            'PATCH',
+            '/platillos/${widget.product.id}',
+            body: {'opciones': options},
+          );
+        }
+        stage = 'actualizar el costo y la vista';
+        final options = _option == null
+            ? widget.product.options
+                  .where((o) => o['tipo'] == 'COMPLEMENTO')
+                  .take(1)
+                  .map((o) => o['opcionId'])
+                  .toList()
+            : [
+                if (widget.product.options.any(
+                  (o) => o['opcionId'] == _option && o['tipo'] == 'EXTRA',
+                ))
+                  ...widget.product.options
+                      .where((o) => o['tipo'] == 'COMPLEMENTO')
+                      .take(1)
+                      .map((o) => o['opcionId']),
+                _option,
+              ];
+        final preview = await store.api.get(
+          '/platillos/${widget.product.id}/costo',
+          {'presentacionId': _id, 'opciones': '[${options.join(',')}]'},
+        );
+        final fresh = await store.api.get(
+          '/platillos/${widget.product.id}/componentes',
+        );
+        widget.data['componentes'] = fresh['componentes'];
+        for (final p in _presentations) {
+          p.addAll(
+            (fresh['presentaciones'] as List).firstWhere(
+              (v) => v['presentacionId'] == p['presentacionId'],
+            ),
+          );
+        }
+        await store.menu();
+        await store.refresh();
+        if (!mounted) return;
+        setState(() => _preview = Map<String, dynamic>.from(preview));
+        showToast(context, 'Cantidades guardadas');
+      } catch (e) {
+        store.error =
+            'Cantidades guardadas. No se pudo $stage. ${e.toString()}';
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) => SheetBody(
     title: 'Costeo · ${widget.product.name}',
@@ -273,20 +366,24 @@ class _CostSheetState extends State<_CostSheet> {
             ChoiceTile(
               label: 'Siempre lleva',
               selected: _option == null,
-              onTap: () => setState(() => _option = null),
+              onTap: () => _chooseOption(null),
             ),
             for (final o in widget.product.options)
               ChoiceTile(
                 label: o['nombre'],
                 selected: _option == o['opcionId'],
-                onTap: () => setState(() {
-                  _option = o['opcionId'];
-                  _additional.text = o['precioAdicional']?.toString() ?? '';
-                }),
+                onTap: () => _chooseOption(o['opcionId']),
               ),
           ],
         ),
         const SizedBox(height: KSpace.m),
+        if (_duplicateIngredients.isNotEmpty) ...[
+          Text(
+            'Revisa ${_duplicateIngredients.join(', ')}: se sumará Siempre lleva más la opción elegida.',
+            style: KText.caption.copyWith(color: KColors.coral),
+          ),
+          const SizedBox(height: KSpace.s),
+        ],
         Text(
           _option == null
               ? 'Insumos que siempre lleva esta presentación, sin importar el complemento.'
@@ -406,6 +503,11 @@ class _CostSheetState extends State<_CostSheet> {
             style: KText.caption,
           ),
         const SizedBox(height: KSpace.m),
+        Text(
+          'Guarda esta presentación. Puedes cambiar a otra sin perder el borrador.',
+          style: KText.caption,
+        ),
+        const SizedBox(height: KSpace.s),
         PrimaryButton(
           label: 'Guardar costeo',
           icon: KIcons.checkStrong,
