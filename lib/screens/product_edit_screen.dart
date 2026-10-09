@@ -54,6 +54,8 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   late bool _hasSizes = _draft.sizes != null;
   late bool _hasOptions = _draft.hasOptions;
   late bool _available = !_draft.paused;
+  late bool _pineapple = _isNew || _draft.extras.contains('Piña');
+  late bool _mango = _draft.extras.contains('Mango');
 
   bool get _isNew => widget.product == null;
 
@@ -88,6 +90,29 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       ..category = _category
       ..hasOptions = _hasOptions
       ..paused = !_available;
+    if (_hasOptions) {
+      if (p.options.isEmpty) {
+        p.options = [
+          for (final name in ['Tostitos', 'Tostadas'])
+            {'tipo': 'COMPLEMENTO', 'nombre': name, 'precioAdicional': 0},
+        ];
+      }
+      final oldFruits = List<Map<String, dynamic>>.of(p.options);
+      p.options.removeWhere(
+        (o) => o['tipo'] == 'EXTRA' && isOptionalIngredient(o['nombre']),
+      );
+      for (final name in [if (_pineapple) 'Piña', if (_mango) 'Mango']) {
+        p.options.add({
+          ...oldFruits.firstWhere(
+            (o) => o['tipo'] == 'EXTRA' && o['nombre'] == name,
+            orElse: () => <String, dynamic>{},
+          ),
+          'tipo': 'EXTRA',
+          'nombre': name,
+          'precioAdicional': 0,
+        });
+      }
+    }
     if (_hasSizes) {
       p
         ..sizes = {'Individual': _int(_single)!, 'Pa Compartir': _int(_double)!}
@@ -330,12 +355,34 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                   ),
                   _Block(
                     label: '¿Lleva complemento?',
-                    hint: 'Tostadas o Tostitos, y extras como piña.',
+                    hint: 'Tostadas o Tostitos, e ingredientes opcionales.',
                     child: _YesNo(
                       value: _hasOptions,
                       onChanged: (v) => setState(() => _hasOptions = v),
                     ),
                   ),
+                  if (_hasOptions)
+                    _Block(
+                      label: 'Ingredientes opcionales',
+                      hint: 'Activa los disponibles. Sin recargo al cliente.',
+                      child: Wrap(
+                        spacing: KSpace.s,
+                        runSpacing: KSpace.s,
+                        children: [
+                          CategoryChip(
+                            label: 'Piña',
+                            selected: _pineapple,
+                            onTap: () =>
+                                setState(() => _pineapple = !_pineapple),
+                          ),
+                          CategoryChip(
+                            label: 'Mango',
+                            selected: _mango,
+                            onTap: () => setState(() => _mango = !_mango),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (!_isNew)
                     _Block(
                       label: 'Cantidades y costo',

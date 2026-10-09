@@ -10,7 +10,8 @@ import '../theme/tokens.dart';
 
 // ─────────────────────────── Modelos ───────────────────────────
 
-bool isOptionalIngredient(String name) => name.trim().toLowerCase() == 'piña';
+bool isOptionalIngredient(String name) =>
+    const {'piña', 'mango'}.contains(name.trim().toLowerCase());
 
 enum OrderStatus { pending, preparing, ready, delivering, delivered, cancelled }
 
@@ -430,7 +431,7 @@ IconData ingredientAppearance(String name, IngredientCategory category) =>
       'Chile mulato' ||
       'Chile poblano' => KIcons.chili,
       'Cilantro' => KIcons.leaf,
-      'Piña' => KIcons.fruit,
+      'Piña' || 'Mango' => KIcons.fruit,
       'Clamato' => KIcons.drop,
       'Salsa Maggi' || 'Salsa inglesa' => KIcons.bottle,
       'Tostitos' => KIcons.chips,

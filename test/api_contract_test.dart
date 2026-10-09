@@ -54,6 +54,22 @@ void main() {
     expect(OrderLine(p, 1, extras: ['Piña']).total, 120);
     expect(OrderLine(p, 1).total, 120);
   });
+  test('Mango opcional no cobra recargo; otros extras conservan su precio', () {
+    final p =
+        Product('Aguachile', 120, 'Aguachiles', Icons.restaurant, Colors.white)
+          ..options = [
+            {'tipo': 'EXTRA', 'nombre': 'Mango', 'precioAdicional': 99},
+            {
+              'tipo': 'EXTRA',
+              'nombre': 'Extra camarón',
+              'precioAdicional': 25.50,
+            },
+          ];
+    expect(isOptionalIngredient(' MANGO '), isTrue);
+    expect(p.optionPriceOrNull('Mango'), 0);
+    expect(OrderLine(p, 2, extras: ['Mango']).total, 240);
+    expect(OrderLine(p, 1, extras: ['Mango', 'Extra camarón']).total, 145.50);
+  });
   test(
     'Recargar el menú conserva precioVenta, centavos y pendientes',
     () async {
