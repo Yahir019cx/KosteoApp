@@ -89,6 +89,9 @@ void main() {
             .toList();
         await store.saveProduct(p);
         p = products.firstWhere((p) => p.name == 'Aguachile Verde');
+        expect(p.price, 120.25);
+        expect(p.sizes?['Individual'], 120.25);
+        expect(p.sizes?['Pa Compartir'], 190.50);
         final pres = p.presentationIds['Individual']!,
             side = p.options.firstWhere(
               (o) => o['nombre'] == 'Tostitos',

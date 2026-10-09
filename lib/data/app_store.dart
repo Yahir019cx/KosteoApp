@@ -518,6 +518,12 @@ class KosteoStore extends ChangeNotifier {
       final ps = (r['presentaciones'] as List)
           .where((s) => s['activa'] == true)
           .toList();
+      final primary = ps.isEmpty
+          ? null
+          : ps.firstWhere(
+              (s) => s['nombre'] == 'Individual',
+              orElse: () => ps.first,
+            );
       final cat =
           const {
             'AGUACHILES': 'Aguachiles',
@@ -532,7 +538,7 @@ class KosteoStore extends ChangeNotifier {
       products.add(
         Product(
             r['nombre'],
-            ps.isEmpty ? null : ps.first['precio'],
+            primary?['precioVenta'],
             cat,
             appearance(r['nombre']).$1,
             appearance(r['nombre']).$2,
@@ -540,7 +546,7 @@ class KosteoStore extends ChangeNotifier {
             sizes: ps.length > 1
                 ? {
                     for (final s in ps)
-                      s['nombre'] as String: s['precio'] as num?,
+                      s['nombre'] as String: s['precioVenta'] as num?,
                   }
                 : null,
           )

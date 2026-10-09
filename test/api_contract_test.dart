@@ -7,6 +7,77 @@ import 'package:kosteo/data/api_client.dart';
 import 'package:kosteo/data/app_store.dart';
 
 void main() {
+  test(
+    'Recargar el menú conserva precioVenta, centavos y pendientes',
+    () async {
+      num? individual = 120.25;
+      final api = ApiClient(
+        client: MockClient((request) async {
+          expect(request.url.path, '/platillos');
+          return http.Response(
+            jsonEncode([
+              {
+                'platilloId': 1,
+                'nombre': 'Aguachile Verde',
+                'categoria': 'AGUACHILES',
+                'pausado': false,
+                'opciones': [],
+                'fotoBase64': null,
+                'presentaciones': [
+                  {
+                    'presentacionId': 4,
+                    'nombre': 'Pa Compartir',
+                    'precioVenta': 190.50,
+                    'activa': true,
+                  },
+                  {
+                    'presentacionId': 1,
+                    'nombre': 'Individual',
+                    'precioVenta': individual,
+                    'activa': true,
+                  },
+                ],
+              },
+              {
+                'platilloId': 9,
+                'nombre': 'Vaso preparado',
+                'categoria': 'BEBIDAS',
+                'pausado': false,
+                'opciones': [],
+                'fotoBase64': null,
+                'presentaciones': [
+                  {
+                    'presentacionId': 12,
+                    'nombre': 'Única',
+                    'precioVenta': 54.56,
+                    'activa': true,
+                  },
+                ],
+              },
+            ]),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }),
+      );
+      final localStore = KosteoStore(client: api);
+      try {
+        await localStore.menu();
+        expect(localStore.product(1).price, 120.25);
+        expect(localStore.product(1).sizes?['Individual'], 120.25);
+        expect(localStore.product(1).sizes?['Pa Compartir'], 190.50);
+        expect(localStore.product(9).price, 54.56);
+        individual = null;
+        await localStore.menu();
+        expect(localStore.product(1).price, isNull);
+        expect(localStore.product(1).sizes?['Individual'], isNull);
+      } finally {
+        api.dispose();
+        localStore.dispose();
+        products.clear();
+      }
+    },
+  );
   test('Una respuesta perdida conserva el UUID al reintentar', () async {
     final received = <String>[];
     final api = ApiClient(
