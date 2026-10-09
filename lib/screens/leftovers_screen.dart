@@ -10,6 +10,7 @@ import '../widgets/inputs.dart';
 import '../widgets/motion.dart';
 import '../widgets/toast.dart';
 import 'common.dart';
+import 'initial_inventory_sheet.dart';
 
 /// Conteo de sobrantes al cierre, por categoría y en pantalla completa.
 class LeftoversScreen extends StatefulWidget {
@@ -41,6 +42,24 @@ class _LeftoversScreenState extends State<LeftoversScreen> {
                   title: widget.counting ? 'Conteo de sobrantes' : 'Inventario',
                   subtitle: todayLabel(),
                   back: true,
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: context.gutter),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: SoftButton(
+                      label: 'Cargar inventario inicial',
+                      icon: KIcons.plus,
+                      expand: false,
+                      height: 40,
+                      onTap: () async {
+                        final i = await showInitialInventory(context);
+                        if (i != null && mounted) {
+                          setState(() => _cat = i.category);
+                        }
+                      },
+                    ),
+                  ),
                 ),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: context.gutter),

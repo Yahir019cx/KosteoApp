@@ -705,8 +705,10 @@ class KosteoStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> inventory() async {
-    final d = await api.get('/inventario', {'jornadaId': jornadaId});
+  Future<void> inventory({bool actual = false}) async {
+    final d = await api.get('/inventario', {
+      'jornadaId': actual ? null : jornadaId,
+    });
     inventoryRead = d['fechaLectura'];
     leftovers.clear();
     for (final r in d['items']) {
@@ -715,6 +717,28 @@ class KosteoStore extends ChangeNotifier {
           ..counted = (r['cantidadFisica'] ?? r['cantidadTeorica'] ?? 0)
           ..touched = r['cantidadFisica'] != null,
       );
+    }
+  }
+
+  Future<void> saveInitialInventory(
+    Ingredient i,
+    num cantidad,
+    String unidad,
+    num costoPorUnidad,
+  ) async {
+    await mutate('POST', '/inventario/inicial', {
+      'insumoId': i.id,
+      'cantidad': cantidad,
+      'unidadId': unitId(unidad),
+      'costoPorUnidad': costoPorUnidad,
+      'claveOperacion': operationKey(),
+    });
+    try {
+      await inventory(actual: true);
+      notifyListeners();
+    } catch (_) {
+      error = 'Inventario inicial guardado. Actualiza para ver el saldo.';
+      notifyListeners();
     }
   }
 

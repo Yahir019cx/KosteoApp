@@ -53,6 +53,14 @@ void main() {
         );
         await store.addIngredient(newIngredient);
         expect(newIngredient.id, greaterThan(0));
+        await store.saveInitialInventory(newIngredient, 1.5, 'kg', 190);
+        expect(
+          store.leftovers
+              .firstWhere((l) => l.ingredient.id == newIngredient.id)
+              .theoretical,
+          1500,
+        );
+        expect(store.metrics[Period.shift]!.investment, 0);
         Ingredient ing(String n) =>
             store.ingredients.firstWhere((i) => i.name == n);
         await store.addPurchase(
