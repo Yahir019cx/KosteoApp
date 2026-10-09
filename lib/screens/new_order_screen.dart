@@ -29,6 +29,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   String? _customer;
   String? _phone, _reference, _notes;
   String _type = 'RECOGER';
+  bool _sinJornada = false;
 
   /// Presentación elegida en cada card (Individual/Doble).
   final Map<Product, String> _sizes = {};
@@ -105,10 +106,14 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
       type: _type,
       reference: _reference,
       notes: _notes,
+      sinJornada: _sinJornada,
     );
     store.ordersFilter.value = OrderStatus.pending;
     if (!mounted) return;
-    showToast(context, 'Pedido ${o.folio} guardado · ${money(o.total)}');
+    showToast(
+      context,
+      'Pedido ${o.folio} guardado${o.jornadaId == null ? ' sin jornada' : ''} · ${money(o.total)}',
+    );
     Navigator.of(context).pop();
   });
 
@@ -220,6 +225,30 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: KSpace.m),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: context.gutter),
+          child: store.jornadaAbiertaId == null
+              ? Text(
+                  'Sin jornada · podrás asignarlo después',
+                  style: KText.caption,
+                )
+              : Row(
+                  children: [
+                    CategoryChip(
+                      label: 'Jornada actual',
+                      selected: !_sinJornada,
+                      onTap: () => setState(() => _sinJornada = false),
+                    ),
+                    const SizedBox(width: KSpace.s),
+                    CategoryChip(
+                      label: 'Para después',
+                      selected: _sinJornada,
+                      onTap: () => setState(() => _sinJornada = true),
+                    ),
+                  ],
+                ),
         ),
         const SizedBox(height: KSpace.m),
         Padding(

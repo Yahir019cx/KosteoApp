@@ -398,7 +398,7 @@ class _OrdersSummary extends StatelessWidget {
         SectionTitle(
           'Pedidos de jornada',
           trailing: Text(
-            '${store.orders.length} en total',
+            '${store.ordersDeJornada.length} en total',
             style: KText.caption,
           ),
         ),
@@ -419,8 +419,8 @@ class _OrdersSummary extends StatelessWidget {
                         children: [
                           PopSwitcher(
                             child: Text(
-                              '${store.countBy(items[i].$1)}',
-                              key: ValueKey(store.countBy(items[i].$1)),
+                              '${store.countByJornada(items[i].$1)}',
+                              key: ValueKey(store.countByJornada(items[i].$1)),
                               style: KText.display.copyWith(
                                 fontSize: 28,
                                 color: items[i].$1.color,

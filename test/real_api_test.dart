@@ -119,6 +119,22 @@ void main() {
         });
         expect(preview['costoTotal'], isNull);
         expect(preview['subtotalCostoConocido'], 54.56);
+        final anticipados = <int>[];
+        for (var i = 0; i < 2; i++) {
+          final futuro = await store.addOrder([
+            OrderLine(p, 1, size: 'Individual', side: 'Tostitos'),
+          ], sinJornada: true);
+          expect(futuro.jornadaId, isNull);
+          expect(futuro.status, OrderStatus.pending);
+          anticipados.add(futuro.number);
+        }
+        await store.asignarPedidos(anticipados, store.jornadaAbiertaId!);
+        for (final id in anticipados) {
+          final asignado = store.orders.firstWhere((o) => o.number == id);
+          expect(asignado.jornadaId, store.jornadaAbiertaId);
+          expect(asignado.lines.single.unitPrice, 120.25);
+          await store.changeStatus(asignado, OrderStatus.cancelled);
+        }
         var order = await store.addOrder(
           [OrderLine(p, 2, size: 'Individual', side: 'Tostitos')],
           customer: 'Prueba reversible',

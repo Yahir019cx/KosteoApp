@@ -154,11 +154,11 @@ class _DayCloseScreenState extends State<DayCloseScreen> {
           ),
         );
 
-        final delivered = store.countBy(OrderStatus.delivered);
+        final delivered = store.countByJornada(OrderStatus.delivered);
         final open =
-            store.orders.length -
+            store.ordersDeJornada.length -
             delivered -
-            store.countBy(OrderStatus.cancelled);
+            store.countByJornada(OrderStatus.cancelled);
         final stats = KosteoCard(
           padding: const EdgeInsets.symmetric(
             vertical: KSpace.l,
@@ -167,7 +167,11 @@ class _DayCloseScreenState extends State<DayCloseScreen> {
           child: IntrinsicHeight(
             child: Row(
               children: [
-                _Stat('${store.orders.length}', 'Pedidos', KColors.ink),
+                _Stat(
+                  '${store.ordersDeJornada.length}',
+                  'Pedidos',
+                  KColors.ink,
+                ),
                 Container(width: 1, color: KColors.line),
                 _Stat('$delivered', 'Entregados', KColors.success),
                 Container(width: 1, color: KColors.line),
@@ -384,9 +388,9 @@ class _ConfirmSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pending =
-        store.orders.length -
-        store.countBy(OrderStatus.delivered) -
-        store.countBy(OrderStatus.cancelled);
+        store.ordersDeJornada.length -
+        store.countByJornada(OrderStatus.delivered) -
+        store.countByJornada(OrderStatus.cancelled);
     return SheetBody(
       title: '¿Cerrar la jornada?',
       subtitle: pending > 0

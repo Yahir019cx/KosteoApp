@@ -455,7 +455,19 @@ class KosteoStore extends ChangeNotifier {
   Period dashboardPeriod = Period.today;
   final ordersFilter = ValueNotifier(OrderStatus.pending);
   int? get jornadaId => selectedJornadaId ?? jornada?['jornadaId'] as int?;
+  int? get jornadaAbiertaId {
+    for (final j in jornadas) {
+      if (j['estado'] == 'ABIERTA') return j['jornadaId'] as int;
+    }
+    return null;
+  }
+
   bool get shiftClosed => jornada?['estado'] == 'CERRADA';
+  List<Order> get ordersDeJornada => orders
+      .where((o) => jornadaId != null && o.jornadaId == jornadaId)
+      .toList();
+  int countByJornada(OrderStatus status) =>
+      ordersDeJornada.where((o) => o.status == status).length;
   int unitId(String code) =>
       units.firstWhere((u) => u['codigo'] == code)['unidadId'] as int;
   Ingredient ingredient(int id) => ingredients.firstWhere((i) => i.id == id);
@@ -599,7 +611,10 @@ class KosteoStore extends ChangeNotifier {
       );
     }
     orders.clear();
-    final data = await api.get('/pedidos', {'jornadaId': jornadaId});
+    final data = await api.get('/pedidos', {
+      'jornadaId': jornadaId,
+      'incluirSinJornada': true,
+    });
     for (final r in data['pedidos']) {
       final lines = <OrderLine>[];
       for (final l in r['lineas']) {
@@ -829,13 +844,16 @@ class KosteoStore extends ChangeNotifier {
     String type = 'RECOGER',
     String? reference,
     String? notes,
+    bool sinJornada = false,
   }) async {
+    final destino = sinJornada ? null : jornadaAbiertaId;
     final r = await api.request(
       'POST',
       '/pedidos',
       body: {
         'claveOperacion': operationKey(),
-        'jornadaId': jornadaId,
+        'jornadaId': destino,
+        'sinJornada': destino == null,
         'cliente': customer,
         'telefono': phone,
         'tipoEntrega': type,
@@ -876,9 +894,15 @@ class KosteoStore extends ChangeNotifier {
         ..phone = phone
         ..reference = reference
         ..notes = notes
-        ..jornadaId = jornadaId;
+        ..jornadaId = destino;
     }
   }
+
+  Future<void> asignarPedidos(List<int> ids, int jornada) => mutate(
+    'PATCH',
+    '/pedidos/jornada',
+    {'pedidoIds': ids, 'jornadaId': jornada},
+  );
 
   List<(Product, int)> get topSellers => metrics[dashboardPeriod]!.sellers
       .map(

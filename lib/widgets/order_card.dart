@@ -8,9 +8,17 @@ import 'basics.dart';
 
 /// Card de pedido: solo lo esencial + una acción contextual de un toque.
 class OrderCard extends StatefulWidget {
-  const OrderCard({super.key, required this.order, required this.onAdvance});
+  const OrderCard({
+    super.key,
+    required this.order,
+    required this.onAdvance,
+    this.selecting = false,
+    this.selected = false,
+  });
   final Order order;
   final VoidCallback onAdvance;
+  final bool selecting;
+  final bool selected;
 
   @override
   State<OrderCard> createState() => _OrderCardState();
@@ -22,7 +30,9 @@ class _OrderCardState extends State<OrderCard> {
   Future<void> _advance() async {
     if (_done) return;
     setState(() => _done = true);
-    await Future.delayed(const Duration(milliseconds: 520));
+    if (!widget.selecting && widget.order.jornadaId != null) {
+      await Future.delayed(const Duration(milliseconds: 520));
+    }
     if (!mounted) return;
     widget.onAdvance();
     setState(() => _done = false);
@@ -49,6 +59,11 @@ class _OrderCardState extends State<OrderCard> {
             ],
           ),
           const SizedBox(height: KSpace.s),
+          if (o.jornadaId == null && status == OrderStatus.pending)
+            Text(
+              'Sin jornada',
+              style: KText.caption.copyWith(color: KColors.sea),
+            ),
           Row(
             children: [
               const Icon(KIcons.user, size: 16, color: KColors.inkMuted),
@@ -150,8 +165,18 @@ class _OrderCardState extends State<OrderCard> {
                         ],
                       )
                     : SoftButton(
-                        label: _done ? '¡Listo!' : next.$2,
-                        icon: _done ? KIcons.checkStrong : _iconFor(next.$1),
+                        label: widget.selecting
+                            ? (widget.selected ? 'Seleccionado' : 'Seleccionar')
+                            : o.jornadaId == null
+                            ? 'Asignar jornada'
+                            : _done
+                            ? '¡Listo!'
+                            : next.$2,
+                        icon: widget.selected
+                            ? KIcons.checks
+                            : _done
+                            ? KIcons.checkStrong
+                            : _iconFor(next.$1),
                         color: _done ? KColors.success : next.$1.color,
                         onTap: _advance,
                       ),
