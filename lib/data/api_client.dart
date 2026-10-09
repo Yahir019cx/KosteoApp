@@ -28,7 +28,7 @@ class ApiClient {
           baseUrl ??
           const String.fromEnvironment(
             'API_BASE_URL',
-            defaultValue: 'http://127.0.0.1:3000',
+            defaultValue: 'https://poolandchill-backend-dev.onrender.com',
           );
   final http.Client client;
   final String baseUrl;
