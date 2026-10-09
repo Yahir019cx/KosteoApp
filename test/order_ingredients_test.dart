@@ -4,14 +4,16 @@ import 'package:kosteo/data/api_client.dart';
 import 'package:kosteo/data/app_store.dart';
 import 'package:kosteo/screens/orders_screen.dart';
 import 'package:kosteo/theme/tokens.dart';
-import 'package:kosteo/widgets/basics.dart';
 
 class PlanningStore extends KosteoStore {
   List<int>? ids;
   String scenario = 'complete';
   @override
-  Future<Map<String, dynamic>> orderIngredients(List<int> selected) async {
-    ids = selected;
+  Future<Map<String, dynamic>> pendingOrderIngredients() async {
+    ids = orders
+        .where((o) => o.status == OrderStatus.pending)
+        .map((o) => o.number)
+        .toList();
     if (scenario == 'error') {
       throw ApiException('Selecciona pedidos pendientes.');
     }
@@ -94,24 +96,11 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.bySemanticsLabel('Seleccionar pedidos'));
+        expect(find.byType(Checkbox), findsNothing);
+        await tester.tap(find.bySemanticsLabel('Buscar'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Seleccionar').first);
+        await tester.enterText(find.byType(TextField), 'Ana');
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Seleccionar').first);
-        await tester.pumpAndSettle();
-        expect(find.text('2 pedidos seleccionados'), findsOneWidget);
-        final assign = tester.widget<SoftButton>(
-          find
-              .byWidgetPredicate(
-                (w) => w is SoftButton && w.label == 'Asignar jornada',
-              )
-              .first,
-        );
-        expect(
-          assign.onTap,
-          isNull,
-        ); // mixed selection cannot silently reassign existing jornada
         await tester.tap(find.text('Ver insumos'));
         await tester.pumpAndSettle();
         expect(data.ids!.toSet(), {1, 2});
@@ -119,7 +108,7 @@ void main() {
         if (scenario == 'error') {
           expect(find.text('Selecciona pedidos pendientes.'), findsOneWidget);
         } else {
-          expect(find.text('Insumos para estos pedidos'), findsOneWidget);
+          expect(find.text('Insumos de todos los pendientes'), findsOneWidget);
           expect(find.text('1.5 kg'), findsOneWidget);
           expect(find.text('375 g'), findsOneWidget);
           if (scenario == 'partial') {

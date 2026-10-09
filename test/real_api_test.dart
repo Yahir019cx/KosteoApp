@@ -178,7 +178,7 @@ void main() {
           anticipados.add(futuro.number);
         }
         await store.asignarPedidos(anticipados, store.jornadaAbiertaId!);
-        final planning = await store.orderIngredients(anticipados);
+        final planning = await store.pendingOrderIngredients();
         expect(planning['pedidos'], 2);
         expect(planning['productos'], 4);
         final shrimpPlan = (planning['insumos'] as List).firstWhere(

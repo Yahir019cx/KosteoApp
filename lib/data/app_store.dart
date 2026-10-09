@@ -996,6 +996,8 @@ class KosteoStore extends ChangeNotifier {
           body: {'pedidoIds': ids},
         ),
       );
+  Future<Map<String, dynamic>> pendingOrderIngredients() async =>
+      Map<String, dynamic>.from(await api.get('/pedidos/insumos-resumen'));
 
   List<(Product, int)> get topSellers => metrics[dashboardPeriod]!.sellers
       .map(

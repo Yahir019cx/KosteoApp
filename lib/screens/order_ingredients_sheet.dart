@@ -6,7 +6,12 @@ import '../widgets/basics.dart';
 import '../widgets/glass_sheet.dart';
 
 class OrderIngredientsSheet extends StatelessWidget {
-  const OrderIngredientsSheet({super.key, required this.data});
+  const OrderIngredientsSheet({
+    super.key,
+    required this.data,
+    this.allPending = false,
+  });
+  final bool allPending;
   final Map<String, dynamic> data;
 
   String _quantity(num value, String unit) {
@@ -23,7 +28,9 @@ class OrderIngredientsSheet extends StatelessWidget {
     final items = data['insumos'] as List;
     final pending = data['pendientes'] as List;
     return SheetBody(
-      title: 'Insumos para estos pedidos',
+      title: allPending
+          ? 'Insumos de todos los pendientes'
+          : 'Insumos para estos pedidos',
       subtitle: '${data['pedidos']} pedidos · ${data['productos']} productos',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -42,7 +49,9 @@ class OrderIngredientsSheet extends StatelessWidget {
           ],
           if (items.isEmpty)
             Text(
-              'Todavía no hay cantidades configuradas para estos productos.',
+              allPending && data['productos'] == 0
+                  ? 'No hay pedidos pendientes por ahora.'
+                  : 'Todavía no hay cantidades configuradas para estos productos.',
               style: KText.body,
             ),
           for (final item in items) ...[

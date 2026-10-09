@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/icons.dart';
 
 import '../data/app_store.dart';
+import '../data/api_client.dart';
 import '../theme/tokens.dart';
 import '../widgets/basics.dart';
 import '../widgets/chips.dart';
@@ -41,8 +42,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
       builder: (context, _) {
         final filter = store.ordersFilter.value;
         final q = _query.text.trim().toLowerCase();
+        final assignable = store.orders
+            .where(
+              (o) => o.status == OrderStatus.pending && o.jornadaId == null,
+            )
+            .map((o) => o.number)
+            .toSet();
+        _selected.removeWhere((id) => !assignable.contains(id));
         final list = store.ordersBy(filter).where((o) {
-          if (_selecting && o.status != OrderStatus.pending) {
+          if (_selecting &&
+              (o.status != OrderStatus.pending || o.jornadaId != null)) {
             return false;
           }
           if (q.isEmpty) return true;
@@ -60,13 +69,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 subtitle:
                     '${store.orders.length} pedidos · ${store.countBy(OrderStatus.pending)} por atender',
                 actions: [
-                  if (_selecting ||
-                      store.orders.any((o) => o.status == OrderStatus.pending))
+                  if (_selecting || assignable.isNotEmpty)
                     CircleIconButton(
                       icon: _selecting ? KIcons.x : KIcons.checks,
                       semanticLabel: _selecting
                           ? 'Terminar selección'
-                          : 'Seleccionar pedidos',
+                          : 'Seleccionar sin jornada',
                       onTap: () => setState(() {
                         _selecting = !_selecting;
                         _selected.clear();
@@ -133,6 +141,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ],
               ),
             ),
+            if (filter == OrderStatus.pending)
+              ContentWidth(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.gutter,
+                    vertical: KSpace.s,
+                  ),
+                  child: SoftButton(
+                    label: 'Ver insumos',
+                    icon: KIcons.menu,
+                    onTap: _ingredients,
+                  ),
+                ),
+              ),
             if (_selecting)
               ContentWidth(
                 child: Padding(
@@ -143,21 +165,37 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        '${_selected.length} pedidos seleccionados',
-                        style: KText.caption,
+                      Row(
+                        children: [
+                          Checkbox(
+                            value:
+                                assignable.isNotEmpty &&
+                                _selected.containsAll(assignable),
+                            activeColor: KColors.sea,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            onChanged: assignable.isEmpty
+                                ? null
+                                : (checked) => setState(() {
+                                    _selected.clear();
+                                    if (checked == true) {
+                                      _selected.addAll(assignable);
+                                    }
+                                  }),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Seleccionar todos',
+                              style: KText.bodyStrong,
+                            ),
+                          ),
+                          Text('${_selected.length}', style: KText.caption),
+                        ],
                       ),
                       const SizedBox(height: KSpace.s),
                       Row(
                         children: [
-                          Expanded(
-                            child: SoftButton(
-                              label: 'Ver insumos',
-                              icon: KIcons.menu,
-                              onTap: _selected.isEmpty ? null : _ingredients,
-                            ),
-                          ),
-                          const SizedBox(width: KSpace.s),
                           Expanded(
                             child: SoftButton(
                               label: 'Asignar jornada',
@@ -217,10 +255,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Future<void> _advance(Order o) async {
     if ((_selecting || o.jornadaId == null) &&
         o.status == OrderStatus.pending) {
-      if (!_selected.contains(o.number) && _selected.length >= 100) {
-        showErrorToast(context, 'Selecciona hasta 100 pedidos.');
-        return;
-      }
       setState(() {
         _selecting = true;
         if (!_selected.add(o.number)) _selected.remove(o.number);
@@ -263,10 +297,29 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           '${j['fechaInicio'].toString().split('T').first} · ${j['fechaFin'].toString().split('T').first}',
                       icon: KIcons.checks,
                       onTap: () => runAction(ctx, () async {
-                        await store.asignarPedidos(
-                          _selected.toList(),
-                          j['jornadaId'] as int,
-                        );
+                        final ids = _selected.toList();
+                        var assigned = 0;
+                        try {
+                          for (
+                            var offset = 0;
+                            offset < ids.length;
+                            offset += 100
+                          ) {
+                            final batch = ids.skip(offset).take(100).toList();
+                            await store.asignarPedidos(
+                              batch,
+                              j['jornadaId'] as int,
+                            );
+                            assigned += batch.length;
+                          }
+                        } catch (e) {
+                          if (assigned > 0) {
+                            throw ApiException(
+                              'Se asignaron $assigned pedidos. ${e is ApiException ? e.message : 'Actualiza la lista para continuar con los restantes.'}',
+                            );
+                          }
+                          rethrow;
+                        }
                         if (!mounted || !ctx.mounted) return;
                         setState(() {
                           _selected.clear();
@@ -283,11 +336,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _ingredients() => runAction(context, () async {
-    final data = await store.orderIngredients(_selected.toList());
+    final data = await store.pendingOrderIngredients();
     if (!mounted) return;
     await showGlassSheet<void>(
       context,
-      builder: (_) => OrderIngredientsSheet(data: data),
+      builder: (_) => OrderIngredientsSheet(data: data, allPending: true),
     );
   });
 
