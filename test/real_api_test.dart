@@ -143,13 +143,30 @@ void main() {
             futuro.lines.single.sides.toSet(),
             i == 0 ? {'Tostitos', 'Tostadas'} : {'Tostitos'},
           );
+          if (i == 0) {
+            final edited = futuro.lines.single.copyForEditing()..qty = 2;
+            await store.editOrder(
+              futuro,
+              [edited, OrderLine(p, 1, size: 'Individual', side: 'Tostitos')],
+              customer: 'Pedido editado',
+              notes: 'Agrego uno mas',
+            );
+            final saved = store.orders.firstWhere(
+              (o) => o.number == futuro.number,
+            );
+            expect(saved.jornadaId, isNull);
+            expect(saved.lines.length, 2);
+            expect(saved.lines.first.qty, 2);
+            expect(saved.total, 360.75);
+            expect(saved.notes, 'Agrego uno mas');
+          }
           anticipados.add(futuro.number);
         }
         await store.asignarPedidos(anticipados, store.jornadaAbiertaId!);
         for (final id in anticipados) {
           final asignado = store.orders.firstWhere((o) => o.number == id);
           expect(asignado.jornadaId, store.jornadaAbiertaId);
-          expect(asignado.lines.single.unitPrice, 120.25);
+          expect(asignado.lines.first.unitPrice, 120.25);
           await store.changeStatus(asignado, OrderStatus.cancelled);
         }
         var order = await store.addOrder(

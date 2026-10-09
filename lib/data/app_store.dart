@@ -150,6 +150,18 @@ class OrderLine {
   num? cost;
   num? fixedCondimentsApplied;
   String costState = 'INCOMPLETO';
+  int? detailId, savedPresentationId;
+  List<int> savedOptionIds = const [];
+  OrderLine copyForEditing() =>
+      OrderLine(product, qty, size: size, sides: sides, extras: List.of(extras))
+        ..detailId = detailId
+        ..savedPresentationId = savedPresentationId
+        ..savedOptionIds = List.of(savedOptionIds)
+        ..historicalPrice = historicalPrice
+        ..historicalName = historicalName
+        ..cost = cost
+        ..costState = costState
+        ..fixedCondimentsApplied = fixedCondimentsApplied;
   num get unitPrice =>
       historicalPrice ??
       (product.priceFor(size) ?? 0) +
@@ -176,6 +188,7 @@ class Order {
   String? phone, reference, notes;
   int? jornadaId;
   num? costoBolsaAplicado;
+  String? revision;
 
   /// Siguiente estado y la acción contextual que lo dispara.
   (OrderStatus, String)? get nextStep => switch (status) {
@@ -649,6 +662,11 @@ class KosteoStore extends ChangeNotifier {
                   .map((o) => o['nombre'] as String)
                   .toList(),
             )
+            ..detailId = l['pedidoDetalleId']
+            ..savedPresentationId = l['presentacionId']
+            ..savedOptionIds = opts
+                .map((o) => (o['opcionId'] as num).toInt())
+                .toList()
             ..historicalName =
                 '${l['nombrePlatillo']} ${l['nombrePresentacion']}'
             ..historicalPrice =
@@ -675,7 +693,8 @@ class KosteoStore extends ChangeNotifier {
           ..reference = r['referenciaEntrega']
           ..notes = r['notas']
           ..jornadaId = r['jornadaId']
-          ..costoBolsaAplicado = r['costoBolsaAplicado'],
+          ..costoBolsaAplicado = r['costoBolsaAplicado']
+          ..revision = r['revision'],
       );
     }
     recentClients = await api.get('/pedidos/clientes-recientes');
@@ -925,6 +944,44 @@ class KosteoStore extends ChangeNotifier {
         ..jornadaId = destino;
     }
   }
+
+  Future<void> editOrder(
+    Order order,
+    List<OrderLine> lines, {
+    String? customer,
+    String? phone,
+    String type = 'RECOGER',
+    String? reference,
+    String? notes,
+  }) => mutate('PATCH', '/pedidos/${order.number}', {
+    'claveOperacion': operationKey(),
+    'revisionAnterior': order.revision,
+    'cliente': customer,
+    'telefono': phone,
+    'tipoEntrega': type,
+    'referenciaEntrega': reference,
+    'notas': notes,
+    'lineas': lines
+        .map(
+          (l) => {
+            if (l.detailId != null) 'pedidoDetalleId': l.detailId,
+            'presentacionId':
+                l.savedPresentationId ?? l.product.presentationId(l.size),
+            'cantidad': l.qty,
+            'opciones': l.detailId != null
+                ? l.savedOptionIds
+                : l.product.options
+                      .where(
+                        (o) =>
+                            l.sides.contains(o['nombre']) ||
+                            l.extras.contains(o['nombre']),
+                      )
+                      .map((o) => o['opcionId'])
+                      .toList(),
+          },
+        )
+        .toList(),
+  });
 
   Future<void> asignarPedidos(List<int> ids, int jornada) => mutate(
     'PATCH',

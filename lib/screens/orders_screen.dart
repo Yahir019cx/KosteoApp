@@ -305,18 +305,40 @@ class _OrdersGrid extends StatelessWidget {
                       if ((orders[i].reference ?? '').isNotEmpty)
                         orders[i].reference!,
                     ].join(' · '),
-                    child: SoftButton(
-                      label: 'Cancelar pedido',
-                      icon: KIcons.trash,
-                      color: KColors.danger,
-                      onTap: () => runAction(ctx, () async {
-                        await store.changeStatus(
-                          orders[i],
-                          OrderStatus.cancelled,
-                        );
-                        if (ctx.mounted) showToast(ctx, 'Pedido cancelado');
-                        if (ctx.mounted) Navigator.of(ctx).pop();
-                      }),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SoftButton(
+                          label: 'Editar pedido',
+                          icon: KIcons.pencilSimple,
+                          onTap: () {
+                            final order = orders[i];
+                            if (order.revision == null) {
+                              showErrorToast(
+                                ctx,
+                                'Actualiza el backend y recarga los pedidos para editar.',
+                              );
+                              return;
+                            }
+                            Navigator.of(ctx).pop();
+                            push(context, NewOrderScreen(order: order));
+                          },
+                        ),
+                        const SizedBox(height: KSpace.m),
+                        SoftButton(
+                          label: 'Cancelar pedido',
+                          icon: KIcons.trash,
+                          color: KColors.danger,
+                          onTap: () => runAction(ctx, () async {
+                            await store.changeStatus(
+                              orders[i],
+                              OrderStatus.cancelled,
+                            );
+                            if (ctx.mounted) showToast(ctx, 'Pedido cancelado');
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                          }),
+                        ),
+                      ],
                     ),
                   ),
                 ),

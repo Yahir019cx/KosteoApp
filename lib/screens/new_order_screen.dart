@@ -16,7 +16,8 @@ import 'common.dart';
 import 'dish_photo.dart';
 
 class NewOrderScreen extends StatefulWidget {
-  const NewOrderScreen({super.key});
+  const NewOrderScreen({super.key, this.order});
+  final Order? order;
 
   @override
   State<NewOrderScreen> createState() => _NewOrderScreenState();
@@ -30,6 +31,24 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   String? _phone, _reference, _notes;
   String _type = 'RECOGER';
   bool _sinJornada = false;
+  bool get _editing => widget.order != null;
+  bool get _started => _editing && widget.order!.status != OrderStatus.pending;
+  bool _locked(OrderLine l) => _started && l.detailId != null;
+  void _clearCart() => setState(() => _cart.removeWhere((l) => !_locked(l)));
+
+  @override
+  void initState() {
+    super.initState();
+    final order = widget.order;
+    if (order == null) return;
+    _cart.addAll(order.lines.map((l) => l.copyForEditing()));
+    _customer = order.customer;
+    _phone = order.phone;
+    _type = order.tipoEntrega;
+    _reference = order.reference;
+    _notes = order.notes;
+    _sinJornada = order.jornadaId == null;
+  }
 
   /// Presentación elegida en cada card (Individual/Doble).
   final Map<Product, String> _sizes = {};
@@ -76,6 +95,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     setState(() {
       final same = _cart.where(
         (e) =>
+            e.detailId == null &&
             e.product == l.product &&
             e.size == l.size &&
             e.sides.length == l.sides.length &&
@@ -91,6 +111,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   }
 
   void _changeQty(OrderLine l, int qty) => setState(() {
+    if (_locked(l)) return;
     if (qty <= 0) {
       _cart.remove(l);
     } else {
@@ -100,6 +121,25 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
 
   Future<void> _save() => runAction(context, () async {
     if (_cart.isEmpty) return;
+    if (_editing) {
+      await store.editOrder(
+        widget.order!,
+        List.of(_cart),
+        customer: _customer,
+        phone: _phone,
+        type: _type,
+        reference: _reference,
+        notes: _notes,
+      );
+      final updated = store.orders
+          .where((o) => o.number == widget.order!.number)
+          .firstOrNull;
+      store.ordersFilter.value = updated?.status ?? widget.order!.status;
+      if (!mounted) return;
+      showToast(context, 'Pedido ${widget.order!.folio} actualizado');
+      Navigator.of(context).pop();
+      return;
+    }
     final o = await store.addOrder(
       List.of(_cart),
       customer: _customer,
@@ -147,13 +187,16 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
           title: 'Pedido ($_items)',
           child: _CartContents(
             lines: _cart,
+            locked: _locked,
+            clearLabel: _started ? 'Quitar agregados' : 'Vaciar pedido',
+            saveLabel: _editing ? 'Guardar cambios' : 'Guardar pedido',
             onQty: (l, q) {
               _changeQty(l, q);
               setSheet(() {});
               if (_cart.isEmpty) Navigator.of(context).pop();
             },
             onClear: () {
-              setState(_cart.clear);
+              _clearCart();
               Navigator.of(context).pop();
             },
             total: _total,
@@ -173,15 +216,15 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     final catalog = Column(
       children: [
         PageHeader(
-          title: 'Nuevo pedido',
+          title: _editing ? 'Editar ${widget.order!.folio}' : 'Nuevo pedido',
           back: true,
           actions: [
-            if (_cart.isNotEmpty)
+            if (_cart.any((l) => !_locked(l)))
               CircleIconButton(
                 icon: KIcons.trash,
                 color: KColors.danger,
                 semanticLabel: 'Vaciar',
-                onTap: () => setState(_cart.clear),
+                onTap: _clearCart,
               ),
           ],
         ),
@@ -230,7 +273,14 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
         const SizedBox(height: KSpace.m),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: context.gutter),
-          child: store.jornadaAbiertaId == null
+          child: _editing
+              ? Text(
+                  _started
+                      ? 'Agrega productos · lo que ya se prepara se conserva'
+                      : 'Conserva su jornada y los precios ya acordados',
+                  style: KText.caption,
+                )
+              : store.jornadaAbiertaId == null
               ? Text(
                   'Sin jornada · podrás asignarlo después',
                   style: KText.caption,
@@ -363,8 +413,9 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
                             : SingleChildScrollView(
                                 child: _CartContents(
                                   lines: _cart,
+                                  locked: _locked,
                                   onQty: _changeQty,
-                                  onClear: () => setState(_cart.clear),
+                                  onClear: _clearCart,
                                   total: _total,
                                   showFooter: false,
                                 ),
@@ -373,7 +424,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
                       _TotalRow(total: _total),
                       const SizedBox(height: KSpace.l),
                       PrimaryButton(
-                        label: 'Guardar pedido',
+                        label: _editing ? 'Guardar cambios' : 'Guardar pedido',
                         icon: KIcons.checkStrong,
                         onTap: _cart.isEmpty ? null : _save,
                       ),
@@ -407,9 +458,13 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              '$_items ${_items == 1 ? 'producto' : 'productos'}',
-                              style: KText.caption,
+                            Flexible(
+                              child: Text(
+                                '$_items ${_items == 1 ? 'producto' : 'productos'}',
+                                style: KText.caption,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             const SizedBox(width: 4),
                             const Icon(
@@ -426,7 +481,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
                 ),
               ),
               PrimaryButton(
-                label: 'Guardar pedido',
+                label: _editing ? 'Guardar' : 'Guardar pedido',
                 expand: false,
                 onTap: _save,
               ),
@@ -464,6 +519,9 @@ class _CartContents extends StatelessWidget {
     required this.total,
     this.onSave,
     this.showFooter = true,
+    this.locked,
+    this.saveLabel = 'Guardar pedido',
+    this.clearLabel = 'Vaciar pedido',
   });
 
   final List<OrderLine> lines;
@@ -472,6 +530,9 @@ class _CartContents extends StatelessWidget {
   final num total;
   final VoidCallback? onSave;
   final bool showFooter;
+  final bool Function(OrderLine)? locked;
+  final String saveLabel;
+  final String clearLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -510,11 +571,14 @@ class _CartContents extends StatelessWidget {
                     ],
                   ),
                 ),
-                QtyStepper(
-                  value: l.qty,
-                  compact: true,
-                  onChanged: (q) => onQty(l, q.toInt()),
-                ),
+                if (locked?.call(l) ?? false)
+                  Text('×${l.qty}', style: KText.bodyStrong)
+                else
+                  QtyStepper(
+                    value: l.qty,
+                    compact: true,
+                    onChanged: (q) => onQty(l, q.toInt()),
+                  ),
               ],
             ),
           ),
@@ -522,7 +586,7 @@ class _CartContents extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: SoftButton(
-              label: 'Vaciar pedido',
+              label: clearLabel,
               icon: KIcons.trash,
               color: KColors.danger,
               expand: false,
@@ -533,7 +597,7 @@ class _CartContents extends StatelessWidget {
           _TotalRow(total: total),
           const SizedBox(height: KSpace.l),
           PrimaryButton(
-            label: 'Guardar pedido',
+            label: saveLabel,
             icon: KIcons.checkStrong,
             onTap: onSave,
           ),
