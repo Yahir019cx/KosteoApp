@@ -173,6 +173,7 @@ class Order {
   String tipoEntrega = 'RECOGER';
   String? phone, reference, notes;
   int? jornadaId;
+  num? costoBolsaAplicado;
 
   /// Siguiente estado y la acción contextual que lo dispara.
   (OrderStatus, String)? get nextStep => switch (status) {
@@ -671,7 +672,8 @@ class KosteoStore extends ChangeNotifier {
           ..phone = r['telefono']
           ..reference = r['referenciaEntrega']
           ..notes = r['notas']
-          ..jornadaId = r['jornadaId'],
+          ..jornadaId = r['jornadaId']
+          ..costoBolsaAplicado = r['costoBolsaAplicado'],
       );
     }
     recentClients = await api.get('/pedidos/clientes-recientes');

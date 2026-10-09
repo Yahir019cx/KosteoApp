@@ -144,6 +144,7 @@ void main() {
           notes: 'Sin cebolla',
         );
         expect(order.total, 240.50);
+        expect(order.costoBolsaAplicado, 0.10);
         expect(order.lines.single.cost, isNull);
         expect(order.reference, 'Portón azul');
         for (final state in [
@@ -203,6 +204,7 @@ void main() {
         );
         expect(historic.lines.single.name, contains('Aguachile Verde'));
         expect(historic.total, 240.50);
+        expect(historic.costoBolsaAplicado, 0.10);
         components.last['cantidad'] = 100;
         await client.request(
           'PUT',
