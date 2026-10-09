@@ -44,7 +44,12 @@ class _LeftoversScreenState extends State<LeftoversScreen> {
                   back: true,
                 ),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: context.gutter),
+                  padding: EdgeInsets.fromLTRB(
+                    context.gutter,
+                    0,
+                    context.gutter,
+                    2,
+                  ),
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: SoftButton(
