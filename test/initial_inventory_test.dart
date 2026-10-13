@@ -33,6 +33,37 @@ class InitialStore extends KosteoStore {
 
 void main() {
   for (final width in [390.0, 1194.0]) {
+    testWidgets('Conserva saldo conocido con rendimiento pendiente: $width', (
+      tester,
+    ) async {
+      final previous = store;
+      addTearDown(() => store = previous);
+      tester.view.physicalSize = Size(width, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final ingredient = Ingredient(
+        'Camarón',
+        IngredientCategory.seafood,
+        Icons.restaurant,
+        'kg',
+        'g',
+      )..id = 1;
+      final data = InitialStore();
+      store = data;
+      data.ingredients.add(ingredient);
+      data.leftovers.add(LeftoverItem(ingredient, null)..knownBalance = 1000);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildKosteoTheme(),
+          home: const LeftoversScreen(counting: false),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Conocido: 1000 g'), findsOneWidget);
+      expect(find.text('Pendiente'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      data.api.dispose();
+    });
     for (final scenario in ['valid', 'error', 'none']) {
       testWidgets('Inventario inicial: $width, $scenario', (tester) async {
         final fail = scenario == 'error';

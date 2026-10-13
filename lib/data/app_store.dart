@@ -297,6 +297,7 @@ class LeftoverItem {
   LeftoverItem(this.ingredient, this.theoretical) : counted = theoretical ?? 0;
   final Ingredient ingredient;
   final num? theoretical;
+  num? knownBalance;
   num counted;
   bool touched = false;
 
@@ -918,6 +919,7 @@ class KosteoStore extends ChangeNotifier {
     for (final r in d['items']) {
       leftovers.add(
         LeftoverItem(ingredient(r['insumoId']), r['cantidadTeorica'])
+          ..knownBalance = r['saldoConocido']
           ..counted = (r['cantidadFisica'] ?? r['cantidadTeorica'] ?? 0)
           ..touched = r['cantidadFisica'] != null,
       );

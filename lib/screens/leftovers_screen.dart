@@ -202,7 +202,7 @@ class _LeftoverCard extends StatelessWidget {
         ? KColors.success
         : (diff < 0 ? KColors.coralDeep : KColors.sea);
     final diffText = !item.touched
-        ? 'Por contar'
+        ? (item.theoretical == null ? 'Pendiente' : 'Por contar')
         : (diff == null
               ? 'Teórico pendiente'
               : diff == 0
@@ -252,7 +252,9 @@ class _LeftoverCard extends StatelessWidget {
                       style: KText.bodyStrong.copyWith(fontSize: 15),
                     ),
                     Text(
-                      'Teórico: ${item.theoretical ?? 'Pendiente'} $unit',
+                      item.theoretical != null
+                          ? 'Teórico: ${item.theoretical} $unit'
+                          : 'Conocido: ${item.knownBalance ?? 'Pendiente'} $unit',
                       style: KText.caption,
                     ),
                   ],
