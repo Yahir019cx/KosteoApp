@@ -43,29 +43,30 @@ class _LeftoversScreenState extends State<LeftoversScreen> {
                   subtitle: todayLabel(),
                   back: true,
                 ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    context.gutter,
-                    0,
-                    context.gutter,
-                    2,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: SoftButton(
-                      label: 'Cargar inventario inicial',
-                      icon: KIcons.plus,
-                      expand: false,
-                      height: 40,
-                      onTap: () async {
-                        final i = await showInitialInventory(context);
-                        if (i != null && mounted) {
-                          setState(() => _cat = i.category);
-                        }
-                      },
+                if (store.initialPendingIngredients.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      context.gutter,
+                      0,
+                      context.gutter,
+                      2,
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: SoftButton(
+                        label: 'Cargar inventario inicial',
+                        icon: KIcons.plus,
+                        expand: false,
+                        height: 40,
+                        onTap: () async {
+                          final i = await showInitialInventory(context);
+                          if (i != null && mounted) {
+                            setState(() => _cat = i.category);
+                          }
+                        },
+                      ),
                     ),
                   ),
-                ),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: context.gutter),
                   child: _ProgressCard(done: done, total: all.length),

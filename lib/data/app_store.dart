@@ -911,6 +911,9 @@ class KosteoStore extends ChangeNotifier {
       'jornadaId': actual ? null : jornadaId,
     });
     inventoryRead = d['fechaLectura'];
+    initialPendingIds = (d['inicialPendientes'] as List? ?? [])
+        .map((r) => r['insumoId'] as int)
+        .toSet();
     leftovers.clear();
     for (final r in d['items']) {
       leftovers.add(
@@ -919,6 +922,16 @@ class KosteoStore extends ChangeNotifier {
           ..touched = r['cantidadFisica'] != null,
       );
     }
+  }
+
+  Set<int> initialPendingIds = {};
+  List<Ingredient> get initialPendingIngredients => ingredients
+      .where((i) => i.measurable && initialPendingIds.contains(i.id))
+      .toList();
+  Future<void> noInitialInventory(Ingredient i) async {
+    await api.request('POST', '/inventario/inicial/${i.id}/sin-existencias');
+    initialPendingIds.remove(i.id);
+    notifyListeners();
   }
 
   Future<void> saveInitialInventory(
@@ -934,6 +947,7 @@ class KosteoStore extends ChangeNotifier {
       'costoPorUnidad': costoPorUnidad,
       'claveOperacion': operationKey(),
     });
+    initialPendingIds.remove(i.id);
     try {
       await inventory(actual: true);
       notifyListeners();

@@ -328,12 +328,18 @@ void main() {
       );
       await tester.runAsync(store.load);
       expect(store.error, isNull);
-      await tester.runAsync(
-        () => showProductCost(
+      await tester.runAsync(() async {
+        final sheet = showProductCost(
           tester.element(find.byType(ProductEditScreen)),
           p,
-        ).timeout(const Duration(milliseconds: 500), onTimeout: () {}),
-      );
+        );
+        // La hoja abre antes de consultar: montar el loader en la zona real de IO.
+        await tester.pump();
+        await sheet.timeout(
+          const Duration(milliseconds: 500),
+          onTimeout: () {},
+        );
+      });
       for (var i = 0; i < 8; i++) {
         await tester.pump(const Duration(milliseconds: 200));
       }

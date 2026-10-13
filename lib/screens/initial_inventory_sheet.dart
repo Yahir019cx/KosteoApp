@@ -84,6 +84,19 @@ class _InitialInventoryState extends State<_InitialInventory> {
             onTap: _pick,
           ),
           if (_ingredient != null) ...[
+            const SizedBox(height: KSpace.s),
+            SoftButton(
+              label: 'No tengo inventario inicial',
+              onTap: () => runAction(context, () async {
+                await store.noInitialInventory(_ingredient!);
+                if (!context.mounted) return;
+                showToast(
+                  context,
+                  'Listo. Registra lo que compres en Compras.',
+                );
+                Navigator.of(context).pop(_ingredient);
+              }),
+            ),
             const SizedBox(height: KSpace.m),
             const FieldLabel('Cantidad útil'),
             KTextField(
@@ -182,7 +195,7 @@ class _InitialIngredientPickerState extends State<_InitialIngredientPicker> {
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: KSpace.m),
-        for (final i in store.ingredients.where(
+        for (final i in store.initialPendingIngredients.where(
           (i) =>
               i.measurable &&
               i.name.toLowerCase().contains(_search.text.trim().toLowerCase()),

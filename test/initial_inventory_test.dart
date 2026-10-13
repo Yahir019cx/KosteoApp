@@ -8,6 +8,14 @@ import 'package:kosteo/theme/tokens.dart';
 class InitialStore extends KosteoStore {
   bool fail = false;
   (num, String, num)? saved;
+  bool omitted = false;
+  @override
+  Future<void> noInitialInventory(Ingredient i) async {
+    omitted = true;
+    initialPendingIds.remove(i.id);
+    notifyListeners();
+  }
+
   @override
   Future<void> saveInitialInventory(
     Ingredient i,
@@ -17,6 +25,7 @@ class InitialStore extends KosteoStore {
   ) async {
     if (fail) throw ApiException('Este insumo ya tiene inventario inicial.');
     saved = (cantidad, unidad, costoPorUnidad);
+    initialPendingIds.remove(i.id);
     leftovers.add(LeftoverItem(i, 1500));
     notifyListeners();
   }
@@ -24,8 +33,11 @@ class InitialStore extends KosteoStore {
 
 void main() {
   for (final width in [390.0, 1194.0]) {
-    for (final fail in [false, true]) {
-      testWidgets('Inventario inicial: $width, error=$fail', (tester) async {
+    for (final scenario in ['valid', 'error', 'none']) {
+      testWidgets('Inventario inicial: $width, $scenario', (tester) async {
+        final fail = scenario == 'error';
+        final previousStore = store;
+        addTearDown(() => store = previousStore);
         final originalError = FlutterError.onError;
         FlutterError.onError = (details) {
           FlutterError.dumpErrorToConsole(details, forceReport: true);
@@ -36,6 +48,7 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
         final data = InitialStore()..fail = fail;
+        data.initialPendingIds = {1};
         store = data;
         data.units = [
           {
@@ -68,13 +81,25 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Camarón'));
         await tester.pumpAndSettle();
+        if (scenario == 'none') {
+          await tester.tap(find.text('No tengo inventario inicial'));
+          await tester.pumpAndSettle();
+          expect(data.omitted, isTrue);
+          expect(data.saved, isNull);
+          expect(data.leftovers, isEmpty);
+          expect(find.text('Cargar inventario inicial'), findsNothing);
+          await tester.pump(const Duration(seconds: 6));
+          data.api.dispose();
+          expect(tester.takeException(), isNull);
+          return;
+        }
         expect(find.text('Costo por kg'), findsOneWidget);
         await tester.enterText(find.byType(TextField).at(0), '1,5');
         await tester.enterText(find.byType(TextField).at(1), '190');
         await tester.pumpAndSettle();
         expect(find.text('Valor inicial: \$285'), findsOneWidget);
-          await tester.ensureVisible(find.text('Guardar saldo inicial'));
-          await tester.tap(find.text('Guardar saldo inicial'));
+        await tester.ensureVisible(find.text('Guardar saldo inicial'));
+        await tester.tap(find.text('Guardar saldo inicial'));
         await tester.pumpAndSettle();
         if (fail) {
           expect(
@@ -86,6 +111,7 @@ void main() {
           expect(data.saved, (1.5, 'kg', 190));
           expect(find.text('Inventario inicial guardado'), findsOneWidget);
           expect(data.leftovers.single.theoretical, 1500);
+          expect(find.text('Cargar inventario inicial'), findsNothing);
         }
         expect(tester.takeException(), isNull);
         await tester.pump(const Duration(seconds: 6));
