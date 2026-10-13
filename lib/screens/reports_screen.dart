@@ -16,7 +16,7 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
-  String _period = 'SEMANA';
+  String _period = 'JORNADA';
   int? _jornadaId;
   List<dynamic> _jornadas = [];
   Map<String, dynamic>? _summary;
@@ -120,6 +120,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
     if (selected == null || !mounted) return;
     setState(() => _jornadaId = selected);
+    _period = 'JORNADA';
     await _load();
   }
 
@@ -176,6 +177,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         },
                       ),
                       const SizedBox(height: KSpace.l),
+                      if (_jornadas.isNotEmpty) ...[
+                        SoftButton(
+                          label:
+                              'Elegir jornada · ${_range(_jornadas.firstWhere((j) => j['jornadaId'] == _jornadaId, orElse: () => _jornadas.first))}',
+                          icon: KIcons.calendarBlank,
+                          onTap: _pickJornada,
+                        ),
+                        const SizedBox(height: KSpace.l),
+                      ],
                       if (_loading)
                         const Padding(
                           padding: EdgeInsets.all(KSpace.xxl),
@@ -203,14 +213,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           message: 'Abre tu primera jornada desde el inicio. Aquí podrás consultar sus resultados.',
                         )
                       else ...[
-                        if (_period == 'JORNADA') ...[
-                          SoftButton(
-                            label: _range(_summary!),
-                            icon: KIcons.calendarBlank,
-                            onTap: _pickJornada,
-                          ),
-                          const SizedBox(height: KSpace.l),
-                        ] else ...[
+                        if (_period != 'JORNADA') ...[
                           Text(
                             _range(_summary!),
                             style: KText.caption,

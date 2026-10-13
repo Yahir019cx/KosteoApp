@@ -20,6 +20,7 @@ class EditingStore extends KosteoStore {
     String type = 'RECOGER',
     String? reference,
     String? notes,
+    String? hour,
   }) async {
     if (fail) throw ApiException('El pedido cambió. Actualiza la lista.');
     saved = lines;

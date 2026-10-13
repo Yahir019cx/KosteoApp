@@ -79,14 +79,18 @@ class BottomActionBar extends StatelessWidget {
   }
 }
 
+final _actionsInFlight = Expando<bool>();
+int _activeActions = 0;
 Future<void> runAction(
   BuildContext context,
   Future<void> Function() action, {
   String? successMessage,
 }) async {
-  if (store.saving) return;
+  if (_actionsInFlight[context] == true) return;
+  _actionsInFlight[context] = true;
   final feedbackOverlay = Overlay.of(context, rootOverlay: true);
   final feedbackContext = feedbackOverlay.context;
+  _activeActions++;
   store.saving = true;
   store.error = null;
   store.productChanged();
@@ -121,7 +125,9 @@ Future<void> runAction(
       );
     }
   } finally {
-    store.saving = false;
+    _actionsInFlight[context] = false;
+    _activeActions--;
+    store.saving = _activeActions > 0;
     store.productChanged();
   }
 }

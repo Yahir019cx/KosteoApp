@@ -51,10 +51,10 @@ class _NewIngredientScreenState extends State<NewIngredientScreen> {
       _use,
       hasYield: _hasYield,
     );
-    await store.addIngredient(i);
+    await store.queueIngredient(i);
     if (!mounted) return;
-    showToast(context, '${i.name} agregado a ${_category.label}');
-    Navigator.of(context).pop(i);
+    showToast(context, '${i.name} en envío. Puedes capturar otro.');
+    setState(() => _name.clear());
   });
 
   @override

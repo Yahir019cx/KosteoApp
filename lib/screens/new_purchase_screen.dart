@@ -34,6 +34,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
   @override
   void initState() {
     super.initState();
+    store.addListener(_updated);
     for (final c in [_qty, _price, _yield]) {
       c.addListener(() => setState(() {}));
     }
@@ -41,10 +42,15 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
 
   @override
   void dispose() {
+    store.removeListener(_updated);
     _qty.dispose();
     _price.dispose();
     _yield.dispose();
     super.dispose();
+  }
+
+  void _updated() {
+    if (mounted) setState(() {});
   }
 
   void _go(int step) => setState(() {
@@ -60,7 +66,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
 
   Future<void> _save() => runAction(context, () async {
     final i = _ingredient!;
-    await store.addPurchase(
+    await store.queuePurchase(
       i,
       _qtyValue!,
       _priceValue!,
@@ -68,8 +74,13 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
       yieldValue: num.tryParse(_yield.text.replaceAll(',', '.')),
     );
     if (!mounted) return;
-    showToast(context, '${i.name} · ${money(_priceValue!)} registrado');
-    Navigator.of(context).pop();
+    showToast(context, '${i.name} en envío. Puedes capturar otra compra.');
+    setState(() {
+      _qty.clear();
+      _price.clear();
+      _yield.clear();
+      _step = 1;
+    });
   });
 
   @override

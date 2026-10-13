@@ -1,15 +1,15 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../data/api_client.dart';
 import '../data/app_store.dart';
 import '../theme/tokens.dart';
+import 'glass_sheet.dart';
+import 'toast.dart';
 
-/// Overlay de pantalla completa mientras haya peticiones a la API en curso:
-/// bloquea los toques al instante y, si tarda, oscurece el fondo y muestra un
-/// spinner al centro (el retraso evita parpadeos en respuestas rápidas).
+final apiNavigatorKey = GlobalKey<NavigatorState>();
+
+/// Indicador discreto de actualización y envíos; no bloquea la captura.
 class ApiActivity extends StatefulWidget {
   const ApiActivity({super.key, required this.child});
   final Widget child;
@@ -19,36 +19,27 @@ class ApiActivity extends StatefulWidget {
 }
 
 class _ApiActivityState extends State<ApiActivity> {
-  bool _blocking = false;
-  bool _visible = false;
-  Timer? _delay;
+  late final _outbox = store.outbox;
+  int _completed = 0;
 
   @override
   void initState() {
     super.initState();
-    ApiClient.pending.addListener(_onChange);
+    _completed = _outbox.completed;
+    _outbox.addListener(_onChange);
   }
 
   void _onChange() {
-    // Durante la primera carga ya se ve el splash con el logo.
-    if (ApiClient.pending.value > 0 && store.loaded) {
-      if (!_blocking) {
-        // Las peticiones pueden empezar durante un build.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && ApiClient.pending.value > 0) {
-            setState(() => _blocking = true);
-          }
-        });
-      }
-      _delay ??= Timer(const Duration(milliseconds: 150), () {
-        if (mounted) setState(() => _visible = true);
-      });
-    } else {
-      _delay?.cancel();
-      _delay = null;
+    if (_completed != _outbox.completed) {
+      _completed = _outbox.completed;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && ApiClient.pending.value == 0) {
-          setState(() => _blocking = _visible = false);
+        final overlay = apiNavigatorKey.currentState?.overlay;
+        if (mounted && overlay != null) {
+          showToast(
+            overlay.context,
+            'Guardado: ${_outbox.lastSaved}',
+            targetOverlay: overlay,
+          );
         }
       });
     }
@@ -56,8 +47,7 @@ class _ApiActivityState extends State<ApiActivity> {
 
   @override
   void dispose() {
-    ApiClient.pending.removeListener(_onChange);
-    _delay?.cancel();
+    _outbox.removeListener(_onChange);
     super.dispose();
   }
 
@@ -65,20 +55,85 @@ class _ApiActivityState extends State<ApiActivity> {
   Widget build(BuildContext context) => Stack(
     children: [
       widget.child,
-      if (_blocking)
-        Positioned.fill(
-          child: AbsorbPointer(
-            child: AnimatedOpacity(
-              opacity: _visible ? 1 : 0,
-              duration: KMotion.fast,
-              child: ColoredBox(
-                color: KColors.ink.withValues(alpha: 0.35),
-                child: const Center(child: BouncingDots()),
+      Positioned(
+        top: MediaQuery.paddingOf(context).top + 4,
+        right: 12,
+        child: ListenableBuilder(
+          listenable: store.outbox,
+          builder: (context, _) {
+            final items = store.outbox.items;
+            if (!store.loaded || items.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return Material(
+              color: KColors.white,
+              elevation: 2,
+              borderRadius: BorderRadius.circular(20),
+              child: InkWell(
+                onTap: () => _pending(context),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Text(
+                    items.any((i) => i.error != null)
+                        ? 'Envíos por revisar'
+                        : items.isNotEmpty
+                        ? 'Enviando ${items.length}'
+                        : 'Guardado',
+                    style: KText.caption,
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
+      ),
     ],
+  );
+  Future<void> _pending(BuildContext context) => showGlassSheet<void>(
+    apiNavigatorKey.currentState?.overlay?.context ?? context,
+    builder: (_) => ListenableBuilder(
+      listenable: store.outbox,
+      builder: (context, _) => SheetBody(
+        title: 'Envíos',
+        subtitle: 'Puedes seguir capturando mientras se envían.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (store.outbox.items.isEmpty)
+              Text(
+                store.outbox.lastSaved == null
+                    ? 'Actualizando datos del servidor.'
+                    : 'Guardado: ${store.outbox.lastSaved}',
+                style: KText.body,
+              ),
+            for (final item in store.outbox.items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: KSpace.m),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.label, style: KText.bodyStrong),
+                    Text(
+                      item.error ??
+                          (item.sending ? 'Enviando…' : 'Pendiente de envío'),
+                      style: KText.caption,
+                    ),
+                    if (item.error != null)
+                      TextButton(
+                        onPressed: () => store.outbox.retry(item),
+                        child: const Text('Reintentar'),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
   );
 }
 

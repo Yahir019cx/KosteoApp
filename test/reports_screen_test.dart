@@ -125,7 +125,7 @@ void main() {
         await tester.tap(find.text('Jornadas'));
         await tester.pumpAndSettle();
         expect(requested.any((p) => p.endsWith('/jornadas/2/resumen')), isTrue);
-        await tester.tap(find.text('05/10/2026 · 11/10/2026'));
+        await tester.tap(find.textContaining('Elegir jornada'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('03/10/2026 · 04/10/2026'));
         await tester.pumpAndSettle();
@@ -165,6 +165,9 @@ void main() {
     expect(find.text('No pudimos cargar el reporte'), findsOneWidget);
     failed = false;
     await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aún no hay jornadas'), findsOneWidget);
+    await tester.tap(find.text('Semana'));
     await tester.pumpAndSettle();
     expect(find.text(money(6340.50)), findsOneWidget);
     await tester.tap(find.text('Jornadas'));

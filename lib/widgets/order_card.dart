@@ -29,10 +29,11 @@ class _OrderCardState extends State<OrderCard> {
 
   Future<void> _advance() async {
     if (_done) return;
-    setState(() => _done = true);
-    if (!widget.selecting && widget.order.jornadaId != null) {
-      await Future.delayed(const Duration(milliseconds: 520));
+    if (!widget.selecting &&
+        store.pendingStatusIds.contains(widget.order.number)) {
+      return;
     }
+    setState(() => _done = true);
     if (!mounted) return;
     widget.onAdvance();
     setState(() => _done = false);
@@ -59,6 +60,8 @@ class _OrderCardState extends State<OrderCard> {
             ],
           ),
           const SizedBox(height: KSpace.s),
+          if (o.deliveryHour != null)
+            Text('Entrega · ${o.deliveryHour}', style: KText.bodyStrong),
           if (o.jornadaId == null && status == OrderStatus.pending)
             Text(
               'Sin jornada',

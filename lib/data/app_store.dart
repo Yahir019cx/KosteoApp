@@ -3,6 +3,10 @@ import 'dart:convert';
 
 import 'api_client.dart';
 
+import 'dart:async';
+
+import 'outbox.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme/icons.dart';
@@ -12,6 +16,10 @@ import '../theme/tokens.dart';
 
 bool isOptionalIngredient(String name) =>
     const {'piña', 'mango'}.contains(name.trim().toLowerCase());
+bool isSauceOption(String name) =>
+    name.trim().toLowerCase().startsWith('salsa ');
+bool isNoChargeOption(String name) =>
+    isOptionalIngredient(name) || isSauceOption(name);
 
 enum OrderStatus { pending, preparing, ready, delivering, delivered, cancelled }
 
@@ -93,6 +101,12 @@ class Product {
   bool draft = false;
   Map<String, int> presentationIds = {};
   List<Map<String, dynamic>> options = [];
+  bool get sharesAguachilePortions =>
+      category == 'Aguachiles' &&
+      {
+        ...presentationIds.keys,
+        ...?sizes?.keys,
+      }.any((s) => s == 'Individual' || s == 'Pa Compartir');
   List<String> get sides => options
       .where((o) => o['tipo'] == 'COMPLEMENTO')
       .map((o) => o['nombre'] as String)
@@ -101,11 +115,11 @@ class Product {
       .where((o) => o['tipo'] == 'EXTRA')
       .map((o) => o['nombre'] as String)
       .toList();
-  num? optionPriceOrNull(String name) => isOptionalIngredient(name)
+  num? optionPriceOrNull(String name) => isNoChargeOption(name)
       ? 0
       : options.firstWhere((o) => o['nombre'] == name)['precioAdicional']
             as num?;
-  num optionPrice(String name) => isOptionalIngredient(name)
+  num optionPrice(String name) => isNoChargeOption(name)
       ? 0
       : options.firstWhere((o) => o['nombre'] == name)['precioAdicional']
                 as num? ??
@@ -186,6 +200,7 @@ class Order {
   String get folio => '#${number.toString().padLeft(4, '0')}';
   num get total => lines.fold<num>(0, (s, l) => s + l.total);
   String tipoEntrega = 'RECOGER';
+  String? deliveryHour;
   String? phone, reference, notes;
   int? jornadaId;
   num? costoBolsaAplicado;
@@ -315,10 +330,14 @@ class Metrics {
     this.inventory,
     this.states = const [],
     this.sellers = const [],
+    this.knownCost,
+    this.costPending = const [],
   });
   final num sales, gas, investment;
   final num? profit, cost, salesDelta, inventory;
   final List<dynamic> states, sellers;
+  final num? knownCost;
+  final List<dynamic> costPending;
   int get orderCount =>
       states.fold<int>(0, (v, s) => v + (s['cantidad'] as num).toInt());
   int count(OrderStatus status) => states
@@ -454,6 +473,143 @@ String timeOf(dynamic v) {
 class KosteoStore extends ChangeNotifier {
   KosteoStore({ApiClient? client}) : api = client ?? ApiClient();
   final ApiClient api;
+  late Outbox outbox = Outbox(api, onSaved: onBackgroundSaved);
+  Set<int> get pendingStatusIds => outbox.items
+      .where((i) => i.path == '/pedidos/estados' && i.error == null)
+      .expand(
+        (i) => (i.body['cambios'] as List).map((c) => c['pedidoId'] as int),
+      )
+      .toSet();
+  Future<void>? _backgroundRefresh;
+  Future<void>? _refreshSerial;
+  bool _refreshAgain = false;
+  bool _dirtyCatalogs = false;
+  bool _dirtyMenu = false;
+  void onBackgroundSaved(PendingSend item) {
+    _dirtyCatalogs =
+        _dirtyCatalogs ||
+        item.path.startsWith('/insumos') ||
+        item.path.startsWith('/compras');
+    _dirtyMenu = _dirtyMenu || item.path.startsWith('/platillos');
+    _refreshAgain = true;
+    if (_backgroundRefresh != null) return;
+    _backgroundRefresh = Future<void>(() async {
+      try {
+        do {
+          _refreshAgain = false;
+          final catalogsNeeded = _dirtyCatalogs, menuNeeded = _dirtyMenu;
+          _dirtyCatalogs = _dirtyMenu = false;
+          await Future.wait([
+            if (catalogsNeeded) catalogs(),
+            if (menuNeeded) menu(),
+          ]);
+          await refresh();
+        } while (_refreshAgain);
+      } catch (_) {
+        error = 'Guardado. Desliza para actualizar la vista.';
+      } finally {
+        _backgroundRefresh = null;
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> queueIngredient(Ingredient i) =>
+      outbox.enqueue('Insumo: ${i.name}', 'POST', '/insumos', {
+        'nombre': i.name,
+        'categoriaInsumoId': categories.firstWhere(
+          (c) => c['orden'] == i.category.index + 1,
+        )['categoriaInsumoId'],
+        'unidadCompraId': unitId(i.buyUnit),
+        'unidadUsoId': unitId(i.useUnit),
+        'manejaRendimiento': i.hasYield,
+      });
+  Future<void> queuePurchase(
+    Ingredient i,
+    num qty,
+    num total, {
+    num? yieldValue,
+    String? yieldUnit,
+  }) => outbox.enqueue(
+    'Compra: ${i.name} · ${money(total)}',
+    'POST',
+    '/compras',
+    {
+      'claveOperacion': operationKey(),
+      'insumoId': i.id,
+      'cantidadCompra': qty,
+      'importeTotal': total,
+      'cantidadUtil': yieldValue,
+      'unidadRendimientoId': unitId(yieldUnit ?? i.useUnit),
+      'jornadaId': shiftClosed ? null : jornadaId,
+    },
+  );
+  Future<void> queueOrder(
+    List<OrderLine> lines, {
+    String? customer,
+    String? phone,
+    String? reference,
+    String? notes,
+    String? hour,
+    bool sinJornada = false,
+  }) => outbox.enqueue(
+    'Pedido: ${customer?.isNotEmpty == true ? customer : 'Sin nombre'}',
+    'POST',
+    '/pedidos',
+    {
+      'claveOperacion': operationKey(),
+      'jornadaId': sinJornada ? null : jornadaAbiertaId,
+      'sinJornada': sinJornada || jornadaAbiertaId == null,
+      'cliente': customer,
+      'telefono': phone,
+      'tipoEntrega': 'ENTREGA',
+      'referenciaEntrega': reference,
+      'notas': notes,
+      'horaEntrega': hour,
+      'lineas': lines
+          .map(
+            (l) => {
+              'presentacionId': l.product.presentationId(l.size),
+              'cantidad': l.qty,
+              'opciones': l.product.options
+                  .where(
+                    (o) =>
+                        l.sides.contains(o['nombre']) ||
+                        l.extras.contains(o['nombre']),
+                  )
+                  .map((o) => o['opcionId'])
+                  .toList(),
+            },
+          )
+          .toList(),
+    },
+  );
+  Future<void> queueStates(List<Order> selected, OrderStatus state) async {
+    if (selected.any((o) => pendingStatusIds.contains(o.number))) {
+      throw ApiException('Estos pedidos ya tienen un cambio en envío.');
+    }
+    for (var start = 0; start < selected.length; start += 100) {
+      final group = selected.skip(start).take(100);
+      await outbox.enqueue(
+        '${group.length} pedidos → ${state.label}',
+        'PATCH',
+        '/pedidos/estados',
+        {
+          'cambios': group
+              .map(
+                (o) => {
+                  'pedidoId': o.number,
+                  'estadoNuevo': statusCode(state),
+                  'estadoAnterior': statusCode(o.status),
+                  'claveOperacion': operationKey(),
+                },
+              )
+              .toList(),
+        },
+      );
+    }
+  }
+
   bool saving = false;
   bool loading = false, loaded = false;
   String? error;
@@ -469,7 +625,7 @@ class KosteoStore extends ChangeNotifier {
   Map<String, dynamic>? jornada;
   int? selectedJornadaId;
   String? inventoryRead;
-  Period dashboardPeriod = Period.today;
+  Period dashboardPeriod = Period.shift;
   final ordersFilter = ValueNotifier(OrderStatus.pending);
   int? get jornadaId => selectedJornadaId ?? jornada?['jornadaId'] as int?;
   int? get jornadaAbiertaId {
@@ -602,7 +758,26 @@ class KosteoStore extends ChangeNotifier {
     }
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh() {
+    final previous = _refreshSerial;
+    final next = previous == null
+        ? _refresh()
+        : previous.catchError((_) {}).then((_) => _refresh());
+    _refreshSerial = next;
+    unawaited(
+      next.then(
+        (_) {
+          if (identical(_refreshSerial, next)) _refreshSerial = null;
+        },
+        onError: (Object _, StackTrace _) {
+          if (identical(_refreshSerial, next)) _refreshSerial = null;
+        },
+      ),
+    );
+    return next;
+  }
+
+  Future<void> _refresh() async {
     jornadas = await api.get('/jornadas') as List;
     jornada = selectedJornadaId == null
         ? await api.get('/jornadas/activa')
@@ -612,8 +787,19 @@ class KosteoStore extends ChangeNotifier {
     if (jornada == null && jornadas.isNotEmpty) {
       jornada = Map<String, dynamic>.from(jornadas.first);
     }
+    final dataResults = await Future.wait([
+      api.get('/compras'),
+      api.get('/pedidos', {'jornadaId': jornadaId, 'incluirSinJornada': true}),
+      api.get('/gastos-reparto', {'jornadaId': jornadaId}),
+      ...Period.values.map(
+        (p) => api.get('/dashboard', {
+          'periodo': const ['HOY', 'SEMANA', 'JORNADA'][p.index],
+          'jornadaId': p == Period.shift ? jornadaId : null,
+        }),
+      ),
+    ]);
     purchases.clear();
-    for (final r in await api.get('/compras') as List) {
+    for (final r in dataResults[0] as List) {
       purchases.add(
         Purchase(
             ingredient(r['insumoId']),
@@ -628,10 +814,7 @@ class KosteoStore extends ChangeNotifier {
       );
     }
     orders.clear();
-    final data = await api.get('/pedidos', {
-      'jornadaId': jornadaId,
-      'incluirSinJornada': true,
-    });
+    final data = dataResults[1];
     for (final r in data['pedidos']) {
       final lines = <OrderLine>[];
       for (final l in r['lineas']) {
@@ -690,6 +873,7 @@ class KosteoStore extends ChangeNotifier {
             parseStatus(r['estado']),
           )
           ..tipoEntrega = r['tipoEntrega']
+          ..deliveryHour = r['horaEntrega']
           ..phone = r['telefono']
           ..reference = r['referenciaEntrega']
           ..notes = r['notas']
@@ -699,16 +883,12 @@ class KosteoStore extends ChangeNotifier {
       );
     }
     gasEntries.clear();
-    for (final g
-        in await api.get('/gastos-reparto', {'jornadaId': jornadaId}) as List) {
+    for (final g in dataResults[2] as List) {
       gasEntries.add(g['monto']);
     }
     await inventory();
     for (final p in Period.values) {
-      final m = await api.get('/dashboard', {
-        'periodo': const ['HOY', 'SEMANA', 'JORNADA'][p.index],
-        'jornadaId': p == Period.shift ? jornadaId : null,
-      });
+      final m = dataResults[3 + p.index];
       metrics[p] = Metrics(
         m['ventas'],
         m['gananciaEstimada'],
@@ -719,6 +899,8 @@ class KosteoStore extends ChangeNotifier {
         inventory: m['inventarioSobrante'],
         states: m['estados'],
         sellers: m['topSellers'],
+        knownCost: m['subtotalCostoConocido'],
+        costPending: m['pendientesCosteo'] ?? const [],
       );
     }
     notifyListeners();
@@ -768,8 +950,8 @@ class KosteoStore extends ChangeNotifier {
   ) async {
     await api.request(method, path, body: body);
     try {
-      await catalogs();
-      await menu();
+      if (path.startsWith('/insumos')) await catalogs();
+      if (path.startsWith('/platillos')) await menu();
       await refresh();
       error = null;
     } catch (e) {
@@ -953,7 +1135,9 @@ class KosteoStore extends ChangeNotifier {
     String type = 'RECOGER',
     String? reference,
     String? notes,
+    String? hour,
   }) => mutate('PATCH', '/pedidos/${order.number}', {
+    'horaEntrega': hour,
     'claveOperacion': operationKey(),
     'revisionAnterior': order.revision,
     'cliente': customer,

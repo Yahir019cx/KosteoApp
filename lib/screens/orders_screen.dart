@@ -26,6 +26,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   bool _searching = false;
   bool _selecting = false;
+  bool _batchSelecting = false;
   final Set<int> _selected = {};
   final _query = TextEditingController();
 
@@ -44,13 +45,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
         final q = _query.text.trim().toLowerCase();
         final assignable = store.orders
             .where(
-              (o) => o.status == OrderStatus.pending && o.jornadaId == null,
+              (o) => _batchSelecting
+                  ? o.status == filter &&
+                        o.jornadaId != null &&
+                        !store.pendingStatusIds.contains(o.number) &&
+                        o.nextStep != null
+                  : o.status == OrderStatus.pending && o.jornadaId == null,
             )
             .map((o) => o.number)
             .toSet();
         _selected.removeWhere((id) => !assignable.contains(id));
         final list = store.ordersBy(filter).where((o) {
           if (_selecting &&
+              !_batchSelecting &&
               (o.status != OrderStatus.pending || o.jornadaId != null)) {
             return false;
           }
@@ -69,14 +76,27 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 subtitle:
                     '${store.orders.length} pedidos · ${store.countBy(OrderStatus.pending)} por atender',
                 actions: [
+                  if (!_selecting &&
+                      filter != OrderStatus.delivered &&
+                      filter != OrderStatus.cancelled)
+                    CircleIconButton(
+                      icon: KIcons.checks,
+                      semanticLabel: 'Seleccionar para cambiar estado',
+                      onTap: () => setState(() {
+                        _batchSelecting = true;
+                        _selecting = true;
+                        _selected.clear();
+                      }),
+                    ),
                   if (_selecting || assignable.isNotEmpty)
                     CircleIconButton(
-                      icon: _selecting ? KIcons.x : KIcons.checks,
+                      icon: _selecting ? KIcons.x : KIcons.jornada,
                       semanticLabel: _selecting
                           ? 'Terminar selección'
                           : 'Seleccionar sin jornada',
                       onTap: () => setState(() {
                         _selecting = !_selecting;
+                        _batchSelecting = false;
                         _selected.clear();
                         store.ordersFilter.value = OrderStatus.pending;
                       }),
@@ -132,6 +152,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       color: KColors.sea,
                       onTap: () => setState(() {
                         store.ordersFilter.value = s;
+                        _batchSelecting = false;
                         if (s != OrderStatus.pending) {
                           _selecting = false;
                           _selected.clear();
@@ -198,16 +219,30 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         children: [
                           Expanded(
                             child: SoftButton(
-                              label: 'Asignar jornada',
+                              label: _batchSelecting
+                                  ? (store
+                                            .ordersBy(filter)
+                                            .where(
+                                              (o) =>
+                                                  _selected.contains(o.number),
+                                            )
+                                            .firstOrNull
+                                            ?.nextStep
+                                            ?.$2 ??
+                                        'Cambiar estado')
+                                  : 'Asignar jornada',
                               icon: KIcons.checks,
                               onTap:
                                   _selected.isEmpty ||
-                                      store.orders.any(
-                                        (o) =>
-                                            _selected.contains(o.number) &&
-                                            o.jornadaId != null,
-                                      )
+                                      (!_batchSelecting &&
+                                          store.orders.any(
+                                            (o) =>
+                                                _selected.contains(o.number) &&
+                                                o.jornadaId != null,
+                                          ))
                                   ? null
+                                  : _batchSelecting
+                                  ? _batchState
                                   : _assign,
                             ),
                           ),
@@ -253,6 +288,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _advance(Order o) async {
+    if (_batchSelecting) {
+      if (store.pendingStatusIds.contains(o.number)) return;
+      if (o.jornadaId != null && o.nextStep != null) {
+        setState(() {
+          if (!_selected.add(o.number)) _selected.remove(o.number);
+        });
+      }
+      return;
+    }
     if ((_selecting || o.jornadaId == null) &&
         o.status == OrderStatus.pending) {
       setState(() {
@@ -263,16 +307,41 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
     await runAction(context, () async {
       final next = o.nextStep?.$1;
-      await store.advance(o);
+      if (next == null) return;
+      await store.queueStates([o], next);
       if (!mounted) return;
       showToast(
         context,
-        '${o.folio} · ${next?.label ?? o.status.label}',
+        '${o.folio} · cambio en envío',
         icon: KIcons.checkCircleStrong,
         color: o.status.color,
       );
     });
   }
+
+  Future<void> _batchState() => runAction(context, () async {
+    final selected = store.orders
+        .where((o) => _selected.contains(o.number))
+        .toList();
+    final next = selected.firstOrNull?.nextStep?.$1;
+    if (next == null) return;
+    if (selected.any((o) => o.nextStep?.$1 != next)) {
+      showErrorToast(
+        context,
+        'Selecciona pedidos con el mismo siguiente estado.',
+      );
+      return;
+    }
+    await store.queueStates(selected, next);
+    if (mounted) {
+      setState(() {
+        _selected.clear();
+        _selecting = false;
+        _batchSelecting = false;
+      });
+      showToast(context, '${selected.length} cambios en envío');
+    }
+  });
 
   Future<void> _assign() async {
     final abiertas = store.jornadas

@@ -54,6 +54,10 @@ class _CostSheetState extends State<_CostSheet> {
   int? _option;
   Map<String, dynamic>? _preview;
   final _additional = TextEditingController();
+  bool get _sharedAguachile => widget.product.sharesAguachilePortions;
+  bool get _fixedSauce =>
+      _sharedAguachile ||
+      widget.product.name.trim().toLowerCase() == 'marea brava';
   final _drafts = <int, Map<String, dynamic>>{};
   final _extraPrices = <int, String>{};
   bool _selectedOnce = false;
@@ -80,7 +84,9 @@ class _CostSheetState extends State<_CostSheet> {
     _id = id;
     final p = _presentations.firstWhere((p) => p['presentacionId'] == id);
     final draft = _drafts[id];
-    _fixed.text = draft?['fijo'] ?? p['costoFijoCondimentos']?.toString() ?? '';
+    _fixed.text = _fixedSauce
+        ? '1'
+        : draft?['fijo'] ?? p['costoFijoCondimentos']?.toString() ?? '';
     _confirmed =
         draft?['confirmada'] ?? p['configuracionCosteoConfirmada'] == true;
     _preview = null;
@@ -312,6 +318,12 @@ class _CostSheetState extends State<_CostSheet> {
                       .map((o) => o['opcionId']),
                 _option,
               ];
+        options.addAll(
+          widget.product.options
+              .where((o) => isSauceOption(o['nombre']))
+              .take(1)
+              .map((o) => o['opcionId']),
+        );
         final preview = await store.api.get(
           '/platillos/${widget.product.id}/costo',
           {'presentacionId': _id, 'opciones': '[${options.join(',')}]'},
@@ -341,8 +353,12 @@ class _CostSheetState extends State<_CostSheet> {
 
   @override
   Widget build(BuildContext context) => SheetBody(
-    title: 'Costeo · ${widget.product.name}',
-    subtitle: 'Configura una vez; se aplica al vender.',
+    title: _sharedAguachile
+        ? 'Porciones de aguachiles'
+        : 'Costeo · ${widget.product.name}',
+    subtitle: _sharedAguachile
+        ? 'Porciones compartidas por todos los aguachiles. Solo cambia la salsa: \$1 por producto.'
+        : 'Configura una vez; se aplica al vender.',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -368,7 +384,9 @@ class _CostSheetState extends State<_CostSheet> {
               selected: _option == null,
               onTap: () => _chooseOption(null),
             ),
-            for (final o in widget.product.options)
+            for (final o in widget.product.options.where(
+              (o) => !isSauceOption(o['nombre']),
+            ))
               ChoiceTile(
                 label: o['nombre'],
                 selected: _option == o['opcionId'],
@@ -457,16 +475,17 @@ class _CostSheetState extends State<_CostSheet> {
             onTap: _add,
           ),
         const SizedBox(height: KSpace.m),
-        const FieldLabel('Salsas / condimentos por unidad'),
-        KTextField(
-          controller: _fixed,
-          hint: 'Pendiente',
-          prefix: '\$',
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-          ],
-        ),
+        if (!_fixedSauce) const FieldLabel('Salsas / condimentos por unidad'),
+        if (!_fixedSauce)
+          KTextField(
+            controller: _fixed,
+            hint: 'Pendiente',
+            prefix: '\$',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+          ),
         if (_option != null &&
             widget.product.options.any(
               (o) =>

@@ -126,7 +126,7 @@ void main() {
           'opciones': '[$side]',
         });
         expect(preview['costoTotal'], isNull);
-        expect(preview['subtotalCostoConocido'], 54.56);
+        expect(preview['subtotalCostoConocido'], 54.06);
         final anticipados = <int>[];
         for (var i = 0; i < 2; i++) {
           final futuro = await store.addOrder([
@@ -212,10 +212,10 @@ void main() {
           await store.changeStatus(order, state);
           order = store.orders.firstWhere((o) => o.number == order.number);
         }
-        expect(order.lines.single.fixedCondimentsApplied, 1.5);
+        expect(order.lines.single.fixedCondimentsApplied, 1);
         expect(
           order.lines.single.fixedCondimentsApplied! * order.lines.single.qty,
-          3,
+          2,
         );
         expect(store.metrics[Period.today]!.sales, 240.50);
         expect(store.metrics[Period.today]!.profit, isNull);
@@ -279,7 +279,7 @@ void main() {
               .lines
               .single
               .cost,
-          65.99,
+          65.49,
         );
       } finally {
         client.dispose();

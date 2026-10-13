@@ -383,7 +383,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                         ],
                       ),
                     ),
-                  if (!_isNew)
+                  if (!_isNew && !_draft.sharesAguachilePortions)
                     _Block(
                       label: 'Cantidades y costo',
                       child: SoftButton(

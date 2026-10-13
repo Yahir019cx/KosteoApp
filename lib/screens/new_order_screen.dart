@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/icons.dart';
@@ -29,7 +29,8 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   String _category = productCategories.first;
   String? _customer;
   String? _phone, _reference, _notes;
-  String _type = 'RECOGER';
+  String _type = 'ENTREGA';
+  String? _hour;
   bool _sinJornada = false;
   bool get _editing => widget.order != null;
   bool get _started => _editing && widget.order!.status != OrderStatus.pending;
@@ -44,7 +45,8 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     _cart.addAll(order.lines.map((l) => l.copyForEditing()));
     _customer = order.customer;
     _phone = order.phone;
-    _type = order.tipoEntrega;
+    _type = 'ENTREGA';
+    _hour = order.deliveryHour;
     _reference = order.reference;
     _notes = order.notes;
     _sinJornada = order.jornadaId == null;
@@ -130,6 +132,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
         type: _type,
         reference: _reference,
         notes: _notes,
+        hour: _hour,
       );
       final updated = store.orders
           .where((o) => o.number == widget.order!.number)
@@ -140,21 +143,18 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
       Navigator.of(context).pop();
       return;
     }
-    final o = await store.addOrder(
+    await store.queueOrder(
       List.of(_cart),
       customer: _customer,
       phone: _phone,
-      type: _type,
       reference: _reference,
       notes: _notes,
+      hour: _hour,
       sinJornada: _sinJornada,
     );
     store.ordersFilter.value = OrderStatus.pending;
     if (!mounted) return;
-    showToast(
-      context,
-      'Pedido ${o.folio} guardado${o.jornadaId == null ? ' sin jornada' : ''} · ${money(o.total)}',
-    );
+    showToast(context, 'Pedido en envío. Puedes continuar capturando.');
     Navigator.of(context).pop();
   });
 
@@ -167,6 +167,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
         type: _type,
         reference: _reference,
         notes: _notes,
+        hour: _hour,
       ),
     );
     if (data == null || !mounted) return;
@@ -176,6 +177,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
       _type = data['type']!;
       _reference = data['reference'];
       _notes = data['notes'];
+      _hour = data['hour']?.isEmpty == true ? null : data['hour'];
     });
   }
 
@@ -643,6 +645,28 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
             height: 140,
             child: DishImage(product: p, radius: KRadius.card),
           ),
+          if (p.extras.any(isSauceOption)) ...[
+            const SizedBox(height: KSpace.m),
+            const FieldLabel('Elige la salsa'),
+            ChoiceTile(
+              label:
+                  _extras.where(isSauceOption).firstOrNull ??
+                  'Seleccionar salsa',
+              selected: _extras.any(isSauceOption),
+              onTap: () async {
+                final selected = await showGlassSheet<String>(
+                  context,
+                  builder: (_) => _SaucePicker(product: p),
+                );
+                if (selected != null && mounted) {
+                  setState(() {
+                    _extras.removeWhere(isSauceOption);
+                    _extras.add(selected);
+                  });
+                }
+              },
+            ),
+          ],
           const SizedBox(height: KSpace.xl),
           const FieldLabel('Complementos'),
           if (p.sides.length > 1)
@@ -669,7 +693,7 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
             spacing: KSpace.s,
             runSpacing: KSpace.s,
             children: [
-              for (final e in p.extras)
+              for (final e in p.extras.where((e) => !isSauceOption(e)))
                 ChoiceTile(
                   label: e,
                   caption: isOptionalIngredient(e)
@@ -708,7 +732,10 @@ class _ProductOptionsSheetState extends State<_ProductOptionsSheet> {
               Expanded(
                 child: PrimaryButton(
                   label: 'Agregar · ${money(_total)}',
-                  onTap: p.sides.isNotEmpty && _sides.isEmpty
+                  onTap:
+                      (p.sides.isNotEmpty && _sides.isEmpty) ||
+                          (p.extras.any(isSauceOption) &&
+                              !_extras.any(isSauceOption))
                       ? null
                       : () => Navigator.of(context).pop(
                           OrderLine(
@@ -735,9 +762,11 @@ class _CustomerSheet extends StatefulWidget {
     this.phone,
     this.reference,
     this.notes,
-    this.type = 'RECOGER',
+    this.hour,
+    this.type = 'ENTREGA',
   });
   final String? current, phone, reference, notes;
+  final String? hour;
   final String type;
   @override
   State<_CustomerSheet> createState() => _CustomerSheetState();
@@ -748,7 +777,55 @@ class _CustomerSheetState extends State<_CustomerSheet> {
       _phone = TextEditingController(text: widget.phone),
       _ref = TextEditingController(text: widget.reference),
       _notes = TextEditingController(text: widget.notes);
-  late String _type = widget.type;
+  late String? _hour = widget.hour;
+  Future<void> _pickHour() async {
+    final parts = (_hour ?? '14:00').split(':');
+    var hour = DateTime(
+      2000,
+      1,
+      1,
+      int.parse(parts[0]),
+      int.parse(parts[1]) ~/ 5 * 5,
+    );
+    final value = await showGlassSheet<String>(
+      context,
+      builder: (context) => SheetBody(
+        title: 'Horario de entrega',
+        child: Column(
+          children: [
+            SizedBox(
+              height: 180,
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.time,
+                use24hFormat: true,
+                minuteInterval: 5,
+                initialDateTime: DateTime(
+                  2000,
+                  1,
+                  1,
+                  hour.hour,
+                  hour.minute ~/ 5 * 5,
+                ),
+                onDateTimeChanged: (v) => hour = v,
+              ),
+            ),
+            PrimaryButton(
+              label: 'Usar horario',
+              onTap: () => Navigator.of(context).pop(
+                '${hour.hour.toString().padLeft(2, '0')}:${hour.minute.toString().padLeft(2, '0')}',
+              ),
+            ),
+            SoftButton(
+              label: 'Sin horario definido',
+              onTap: () => Navigator.of(context).pop(''),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (value != null && mounted) setState(() => _hour = value);
+  }
+
   @override
   void dispose() {
     for (final c in [_name, _phone, _ref, _notes]) {
@@ -772,16 +849,15 @@ class _CustomerSheetState extends State<_CustomerSheet> {
           keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: KSpace.m),
-        SegmentedPill<String>(
-          values: const ['RECOGER', 'ENTREGA'],
-          selected: _type,
-          labelOf: (v) => v == 'RECOGER' ? 'Recoger' : 'Entrega',
-          onChanged: (v) => setState(() => _type = v),
+        KTextField(controller: _ref, hint: 'Referencia corta de entrega'),
+        const SizedBox(height: KSpace.m),
+        SoftButton(
+          label: _hour?.isNotEmpty == true
+              ? 'Entrega a las $_hour'
+              : 'Horario de entrega',
+          icon: KIcons.calendarBlank,
+          onTap: _pickHour,
         ),
-        if (_type == 'ENTREGA') ...[
-          const SizedBox(height: KSpace.m),
-          KTextField(controller: _ref, hint: 'Referencia corta'),
-        ],
         const SizedBox(height: KSpace.m),
         KTextField(controller: _notes, hint: 'Notas (opcional)'),
         const SizedBox(height: KSpace.l),
@@ -790,12 +866,97 @@ class _CustomerSheetState extends State<_CustomerSheet> {
           onTap: () => Navigator.of(context).pop({
             'name': _name.text.trim(),
             'phone': _phone.text.trim(),
-            'type': _type,
-            'reference': _type == 'ENTREGA' ? _ref.text.trim() : '',
+            'type': 'ENTREGA',
+            'reference': _ref.text.trim(),
             'notes': _notes.text.trim(),
+            'hour': _hour ?? '',
           }),
         ),
       ],
     ),
   );
+}
+
+class _SaucePicker extends StatefulWidget {
+  const _SaucePicker({required this.product});
+  final Product product;
+  @override
+  State<_SaucePicker> createState() => _SaucePickerState();
+}
+
+class _SaucePickerState extends State<_SaucePicker> {
+  final _search = TextEditingController();
+  bool _saving = false;
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _create() async {
+    final name = _search.text.trim();
+    if (name.isEmpty || _saving) return;
+    setState(() => _saving = true);
+    try {
+      final option = Map<String, dynamic>.from(
+        await store.api.request(
+          'POST',
+          '/platillos/${widget.product.id}/salsas',
+          body: {'nombre': name},
+        ),
+      );
+      widget.product.options.removeWhere(
+        (o) => o['opcionId'] == option['opcionId'],
+      );
+      widget.product.options.add(option);
+      if (mounted) Navigator.of(context).pop(option['nombre'] as String);
+    } catch (e) {
+      if (mounted) showErrorToast(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _search.text.trim().toLowerCase();
+    final choices = widget.product.extras
+        .where(isSauceOption)
+        .where((s) => s.toLowerCase().contains(query))
+        .toList();
+    return SheetBody(
+      title: 'Salsa de Marea Brava',
+      subtitle: 'Elige una salsa',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          KTextField(
+            controller: _search,
+            hint: 'Buscar o escribir una salsa nueva',
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: KSpace.m),
+          for (final name in choices)
+            Padding(
+              padding: const EdgeInsets.only(bottom: KSpace.s),
+              child: ChoiceTile(
+                label: name.replaceFirst('Salsa ', ''),
+                selected: false,
+                onTap: () => Navigator.of(context).pop(name),
+              ),
+            ),
+          if (query.isNotEmpty &&
+              !widget.product.extras.any(
+                (s) =>
+                    s.toLowerCase() == query ||
+                    s.toLowerCase() == 'salsa $query',
+              ))
+            PrimaryButton(
+              label: _saving ? 'Guardando salsa...' : 'Agregar salsa',
+              onTap: _saving ? null : _create,
+            ),
+        ],
+      ),
+    );
+  }
 }

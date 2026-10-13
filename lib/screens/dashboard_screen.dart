@@ -27,7 +27,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  Period _period = Period.today;
+  Period _period = Period.shift;
   int? _selected;
 
   @override
@@ -334,6 +334,23 @@ class _DonutCard extends StatelessWidget {
                 Center(child: donut),
                 const SizedBox(height: KSpace.xl),
                 legend,
+              ],
+              if (m.cost == null) ...[
+                const SizedBox(height: KSpace.m),
+                Text(
+                  m.knownCost == null
+                      ? 'Costeo pendiente: completa compras y porciones para calcular la ganancia.'
+                      : 'Costo conocido: ${money(m.knownCost)} · subtotal provisional',
+                  style: KText.caption,
+                ),
+                for (final pending in m.costPending)
+                  Padding(
+                    padding: const EdgeInsets.only(top: KSpace.s),
+                    child: Text(
+                      '${pending['nombre']}: ${pending['motivo']}',
+                      style: KText.caption,
+                    ),
+                  ),
               ],
             ],
           );

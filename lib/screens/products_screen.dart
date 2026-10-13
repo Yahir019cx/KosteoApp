@@ -10,6 +10,7 @@ import '../widgets/product_card.dart';
 import '../widgets/toast.dart';
 import 'common.dart';
 import 'product_edit_screen.dart';
+import 'product_cost_sheet.dart';
 
 /// Pestaña Productos: el menú que se vende. Foto real, precio y
 /// disponibilidad (pausar/activar con un toque). Tocar abre el editor.
@@ -62,6 +63,29 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     ),
                 ],
               ),
+            ),
+            Expanded(
+              flex: 0,
+              child: products.any((p) => p.sharesAguachilePortions)
+                  ? ContentWidth(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.gutter,
+                          vertical: KSpace.s,
+                        ),
+                        child: SoftButton(
+                          label: 'Porciones de aguachiles',
+                          icon: KIcons.gear,
+                          onTap: () => showProductCost(
+                            context,
+                            products.firstWhere(
+                              (p) => p.sharesAguachilePortions,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
             Expanded(
               child: ContentWidth(
