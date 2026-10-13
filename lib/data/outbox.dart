@@ -13,10 +13,19 @@ class PendingSend {
     this.path,
     this.body, {
     this.error,
+    this.status,
   });
   final String id, label, method, path;
   final Map<String, dynamic> body;
   String? error;
+  int? status;
+  bool get canDiscard =>
+      path.endsWith('/rendimientos') &&
+      !sending &&
+      error != null &&
+      status != null &&
+      status! >= 400 &&
+      status! < 500;
   bool sending = false;
   bool ready = false;
   Map<String, dynamic> toJson() => {
@@ -26,6 +35,7 @@ class PendingSend {
     'path': path,
     'body': body,
     'error': error,
+    'status': status,
   };
   factory PendingSend.fromJson(Map<String, dynamic> j) => PendingSend(
     j['id'],
@@ -34,6 +44,7 @@ class PendingSend {
     j['path'],
     Map<String, dynamic>.from(j['body']),
     error: j['error'],
+    status: j['status'],
   );
 }
 
@@ -102,9 +113,28 @@ class Outbox extends ChangeNotifier {
   Future<void> retry(PendingSend item) async {
     if (item.sending) return;
     item.error = null;
+    item.status = null;
     await _save();
     notifyListeners();
     unawaited(drain());
+  }
+
+  Future<void> discardRejectedYield(PendingSend item) async {
+    if (!item.canDiscard) {
+      throw ApiException(
+        'Primero hay que confirmar el resultado del envío. Reintenta sin perder la captura.',
+      );
+    }
+    final index = items.indexOf(item);
+    if (index < 0) return;
+    items.removeAt(index);
+    try {
+      await _save();
+    } catch (_) {
+      items.insert(index, item);
+      rethrow;
+    }
+    notifyListeners();
   }
 
   Future<void> drain() {
@@ -150,6 +180,7 @@ class Outbox extends ChangeNotifier {
           onSaved?.call(pending);
         } catch (e) {
           pending.error = e.toString();
+          pending.status = e is ApiException ? e.status : null;
           try {
             await _save();
           } catch (_) {

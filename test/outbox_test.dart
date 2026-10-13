@@ -14,6 +14,41 @@ import 'package:kosteo/data/outbox_file.dart';
 
 void main() {
   test(
+    'Solo descarta rendimientos rechazados; conserva resultados ambiguos',
+    () async {
+      final box = Outbox(
+        ApiClient(
+          client: MockClient(
+            (_) async => http.Response('{"message":"Cantidad excedida"}', 409),
+          ),
+        ),
+      );
+      await box.enqueue('Rendimiento', 'POST', '/compras/1/rendimientos', {
+        'claveOperacion': operationKey(),
+      });
+      await box.drain();
+      expect(box.items.single.canDiscard, isTrue);
+      await box.discardRejectedYield(box.items.single);
+      expect(box.items, isEmpty);
+      final ambiguous = Outbox(
+        ApiClient(client: MockClient((_) async => http.Response('{}', 503))),
+      );
+      await ambiguous.enqueue(
+        'Rendimiento',
+        'POST',
+        '/compras/1/rendimientos',
+        {'claveOperacion': operationKey()},
+      );
+      await ambiguous.drain();
+      expect(ambiguous.items.single.canDiscard, isFalse);
+      await expectLater(
+        ambiguous.discardRejectedYield(ambiguous.items.single),
+        throwsA(isA<ApiException>()),
+      );
+      expect(ambiguous.items.length, 1);
+    },
+  );
+  test(
     'Archivo real conserva envíos entre aperturas y reemplaza el diario',
     () async {
       final dir = await Directory.systemTemp.createTemp('kosteo-outbox-test-');

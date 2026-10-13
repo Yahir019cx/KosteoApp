@@ -119,15 +119,22 @@ class PurchaseRow extends StatelessWidget {
                 children: [
                   Text(i.name, style: KText.bodyStrong.copyWith(fontSize: 15)),
                   Text('${p.qtyLabel} · ${p.time}', style: KText.caption),
+                  if (p.remainingToProcess != null && p.remainingToProcess! > 0)
+                    Text(
+                      '${p.remainingToProcess} ${p.processingUnit} por procesar · ${p.date.day}/${p.date.month}',
+                      style: KText.caption,
+                    ),
                   if (p.needsYield)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: StatusPill(
-                        label: 'Falta rendimiento',
+                        label: p.remainingToProcess == null
+                            ? 'Falta rendimiento'
+                            : 'Pendiente',
                         color: KColors.coral,
                       ),
-                    )
-                  else if (p.yieldValue != null)
+                    ),
+                  if (p.yieldValue != null)
                     Text(
                       'Rinde ${p.yieldValue} ${i.useUnit}',
                       style: KText.caption.copyWith(color: KColors.lagoon),

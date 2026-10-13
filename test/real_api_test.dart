@@ -61,6 +61,40 @@ void main() {
           1500,
         );
         expect(store.metrics[Period.shift]!.investment, 0);
+        await store.addPurchase(newIngredient, 10, 300);
+        var partial = store.purchases.firstWhere(
+          (p) => p.ingredient.id == newIngredient.id,
+        );
+        expect(partial.remainingToProcess, 10);
+        await store.queuePurchaseYield(partial, 5, 4, 'kg');
+        await store.outbox.drain();
+        await store.refresh();
+        partial = store.purchases.firstWhere(
+          (p) => p.ingredient.id == newIngredient.id,
+        );
+        expect(partial.remainingToProcess, 5);
+        expect(partial.manualProcessing, isTrue);
+        expect(
+          store.leftovers
+              .firstWhere((l) => l.ingredient.id == newIngredient.id)
+              .theoretical,
+          5500,
+        );
+        await store.queuePurchaseYield(partial, 3, 2.4, 'kg');
+        await store.outbox.drain();
+        await store.refresh();
+        expect(
+          store.purchases
+              .firstWhere((p) => p.ingredient.id == newIngredient.id)
+              .remainingToProcess,
+          2,
+        );
+        expect(
+          store.leftovers
+              .firstWhere((l) => l.ingredient.id == newIngredient.id)
+              .theoretical,
+          7900,
+        );
         Ingredient ing(String n) =>
             store.ingredients.firstWhere((i) => i.name == n);
         await store.addPurchase(

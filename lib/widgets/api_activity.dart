@@ -106,7 +106,7 @@ class _ApiActivityState extends State<ApiActivity> {
             if (store.outbox.items.isEmpty)
               Text(
                 store.outbox.lastSaved == null
-                    ? 'Actualizando datos del servidor.'
+                    ? 'No hay envíos pendientes.'
                     : 'Guardado: ${store.outbox.lastSaved}',
                 style: KText.body,
               ),
@@ -126,6 +126,28 @@ class _ApiActivityState extends State<ApiActivity> {
                       TextButton(
                         onPressed: () => store.outbox.retry(item),
                         child: const Text('Reintentar'),
+                      ),
+                    if (item.canDiscard)
+                      TextButton(
+                        onPressed: () async {
+                          try {
+                            await store.outbox.discardRejectedYield(item);
+                            if (context.mounted) {
+                              showToast(
+                                context,
+                                'Captura rechazada descartada. Puedes registrar otra.',
+                              );
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              showErrorToast(
+                                context,
+                                'No se pudo descartar la captura. Intenta nuevamente.',
+                              );
+                            }
+                          }
+                        },
+                        child: const Text('Descartar y capturar otra vez'),
                       ),
                   ],
                 ),

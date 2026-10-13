@@ -14,11 +14,150 @@ import '../widgets/toast.dart';
 
 /// Editar una compra ya registrada. Caso típico: en la mañana se anota
 /// cantidad y precio; en la tarde, tras pelar o exprimir, el rendimiento.
-Future<void> showEditPurchaseSheet(BuildContext context, Purchase purchase) =>
-    showGlassSheet<void>(
+Future<void> showEditPurchaseSheet(BuildContext context, Purchase purchase) {
+  if ((purchase.remainingToProcess ?? 0) > 0) {
+    return showGlassSheet<void>(
       context,
-      builder: (_) => _EditPurchaseSheet(purchase: purchase),
+      builder: (_) => _PartialYieldSheet(purchase: purchase),
     );
+  }
+  if (purchase.manualProcessing) {
+    return showGlassSheet<void>(
+      context,
+      builder: (_) => SheetBody(
+        title: purchase.ingredient.name,
+        subtitle: 'Compra procesada completamente',
+        child: Text(
+          '${purchase.qtyLabel} · ${money(purchase.total)}\nObtuviste ${purchase.yieldValue} ${purchase.ingredient.useUnit} útiles.',
+          style: KText.body,
+        ),
+      ),
+    );
+  }
+  return showGlassSheet<void>(
+    context,
+    builder: (_) => _EditPurchaseSheet(purchase: purchase),
+  );
+}
+
+class _PartialYieldSheet extends StatefulWidget {
+  const _PartialYieldSheet({required this.purchase});
+  final Purchase purchase;
+  @override
+  State<_PartialYieldSheet> createState() => _PartialYieldSheetState();
+}
+
+class _PartialYieldSheetState extends State<_PartialYieldSheet> {
+  late final _processed = TextEditingController(
+    text: '${widget.purchase.remainingToProcess}',
+  );
+  final _useful = TextEditingController();
+  late String _unit =
+      store
+          .yieldUnits(widget.purchase.ingredient)
+          .any((u) => u['codigo'] == widget.purchase.processingUnit)
+      ? widget.purchase.processingUnit
+      : widget.purchase.ingredient.useUnit;
+  bool _saving = false;
+  num? _number(TextEditingController controller) =>
+      num.tryParse(controller.text.replaceAll(',', '.'));
+  String _display(num value) =>
+      value.toStringAsFixed(8).replaceFirst(RegExp(r'\.?0+$'), '');
+  @override
+  void dispose() {
+    _processed.dispose();
+    _useful.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await runAction(context, () async {
+        await store.queuePurchaseYield(
+          widget.purchase,
+          _number(_processed)!,
+          _number(_useful)!,
+          _unit,
+        );
+        if (!mounted) return;
+        showToast(context, 'Rendimiento en envío. Puedes continuar.');
+        Navigator.of(context).pop();
+      });
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.purchase;
+    final amount = _number(_processed), useful = _number(_useful);
+    final valid =
+        amount != null &&
+        amount > 0 &&
+        amount <= p.remainingToProcess! &&
+        useful != null &&
+        useful > 0;
+    return SheetBody(
+      title: 'Procesar ${p.ingredient.name}',
+      subtitle:
+          '${p.remainingToProcess} ${p.processingUnit} por procesar de esta compra',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const FieldLabel('Cantidad procesada'),
+          KTextField(
+            controller: _processed,
+            suffix: p.processingUnit,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: KSpace.m),
+          const FieldLabel('Cantidad útil'),
+          KTextField(
+            controller: _useful,
+            suffix: _unit,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (_) => setState(() {}),
+          ),
+          if (store.yieldUnits(p.ingredient).length > 1)
+            Wrap(
+              spacing: KSpace.s,
+              children: [
+                for (final unit in store.yieldUnits(p.ingredient))
+                  CategoryChip(
+                    label: unit['codigo'],
+                    selected: _unit == unit['codigo'],
+                    onTap: () => setState(() => _unit = unit['codigo']),
+                  ),
+              ],
+            ),
+          const SizedBox(height: KSpace.m),
+          if (amount != null && amount > 0 && amount <= p.remainingToProcess!)
+            Text(
+              'Quedarán ${_display(p.remainingToProcess! - amount)} ${p.processingUnit} por procesar.',
+              style: KText.caption,
+            ),
+          const SizedBox(height: KSpace.m),
+          PrimaryButton(
+            label: _saving ? 'Guardando…' : 'Registrar rendimiento',
+            onTap: valid && !_saving ? _save : null,
+          ),
+          if (!p.manualProcessing)
+            SoftButton(
+              label: 'Editar datos de compra',
+              onTap: () => showGlassSheet<void>(
+                context,
+                builder: (_) => _EditPurchaseSheet(purchase: p),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class _EditPurchaseSheet extends StatefulWidget {
   const _EditPurchaseSheet({required this.purchase});

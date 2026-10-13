@@ -283,14 +283,22 @@ class Purchase {
 
   /// Rendimiento final en la unidad de uso (g, ml...). null = aún no capturado.
   num? yieldValue;
+  num? remainingToProcess;
+  num processed = 0;
+  bool manualProcessing = false;
+  String? purchasedUnit;
+  String get processingUnit => purchasedUnit ?? ingredient.buyUnit;
 
   int id = 0;
   int? jornadaId;
   DateTime date = DateTime.now();
-  bool get needsYield => ingredient.measurable && yieldValue == null;
+  bool get needsYield =>
+      ingredient.measurable &&
+      (remainingToProcess == null
+          ? yieldValue == null
+          : remainingToProcess! > 0);
 
-  String get qtyLabel =>
-      '${_fmtQty(qty)} ${unitLabel(ingredient.buyUnit, qty)}';
+  String get qtyLabel => '${_fmtQty(qty)} ${unitLabel(processingUnit, qty)}';
 }
 
 class LeftoverItem {
@@ -811,6 +819,10 @@ class KosteoStore extends ChangeNotifier {
           )
           ..id = r['compraId']
           ..jornadaId = r['jornadaId']
+          ..remainingToProcess = r['cantidadPorProcesar']
+          ..processed = r['cantidadProcesada'] ?? 0
+          ..manualProcessing = (r['rendimientosManuales'] ?? 0) > 0
+          ..purchasedUnit = r['unidadCompra']
           ..date = DateTime.parse(r['fechaCompra']).toLocal(),
       );
     }
@@ -1069,6 +1081,22 @@ class KosteoStore extends ChangeNotifier {
   });
   Future<void> removePurchase(Purchase p) =>
       mutate('DELETE', '/compras/${p.id}', null);
+  Future<void> queuePurchaseYield(
+    Purchase p,
+    num processed,
+    num useful,
+    String unit,
+  ) => outbox.enqueue(
+    'Rendimiento: ${p.ingredient.name}',
+    'POST',
+    '/compras/${p.id}/rendimientos',
+    {
+      'cantidadProcesada': processed,
+      'cantidadUtil': useful,
+      'unidadRendimientoId': unitId(unit),
+      'claveOperacion': operationKey(),
+    },
+  );
   int countBy(OrderStatus s) => orders.where((o) => o.status == s).length;
   List<Order> ordersBy(OrderStatus s) =>
       orders.where((o) => o.status == s).toList();

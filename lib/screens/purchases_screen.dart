@@ -33,7 +33,15 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
         final count = filtered.length;
 
         final summary = _Summary(total: total, count: count, period: _period);
-        final list = _PurchaseList(purchases: filtered);
+        final pendingEarlier = store.purchases
+            .where(
+              (p) => (p.remainingToProcess ?? 0) > 0 && !filtered.contains(p),
+            )
+            .toList();
+        final list = _PurchaseList(
+          purchases: [...filtered, ...pendingEarlier],
+          includesEarlier: pendingEarlier.isNotEmpty,
+        );
         final g = context.gutter;
 
         return ListView(
@@ -193,8 +201,9 @@ class _Summary extends StatelessWidget {
 }
 
 class _PurchaseList extends StatelessWidget {
-  const _PurchaseList({required this.purchases});
+  const _PurchaseList({required this.purchases, this.includesEarlier = false});
   final List<Purchase> purchases;
+  final bool includesEarlier;
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +211,7 @@ class _PurchaseList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionTitle(
-          'Registro',
+          includesEarlier ? 'Registro y pendientes anteriores' : 'Registro',
           trailing: Text('${purchases.length}', style: KText.caption),
         ),
         if (store.purchasesMissingYield > 0) ...[
@@ -254,8 +263,8 @@ class _PendingYieldBanner extends StatelessWidget {
           Expanded(
             child: Text(
               count == 1
-                  ? '1 compra espera su rendimiento. Tócala para completarlo.'
-                  : '$count compras esperan su rendimiento. Tócalas para completarlo.',
+                  ? '1 compra tiene cantidad por procesar. Tócala para registrar una parte.'
+                  : '$count compras tienen cantidad por procesar. Tócalas para registrar una parte.',
               style: KText.body.copyWith(fontSize: 13.5),
             ),
           ),
