@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:kosteo/data/api_client.dart';
 import 'package:kosteo/data/app_store.dart';
 import 'package:kosteo/screens/product_cost_sheet.dart';
 import 'package:kosteo/widgets/chips.dart';
+import 'package:kosteo/widgets/basics.dart';
 
 class _Store extends KosteoStore {
   _Store(ApiClient api) : super(client: api);
@@ -20,6 +22,90 @@ class _Store extends KosteoStore {
 }
 
 void main() {
+  testWidgets('Costeo avisa mientras carga y guarda con API lenta', (
+    tester,
+  ) async {
+    final previous = store;
+    addTearDown(() => store = previous);
+    final loading = Completer<http.Response>();
+    final saving = Completer<http.Response>();
+    final data = {
+      'presentaciones': [
+        {
+          'presentacionId': 1,
+          'nombre': 'Única',
+          'activa': true,
+          'costoFijoCondimentos': 1,
+          'configuracionCosteoConfirmada': false,
+        },
+      ],
+      'componentes': <dynamic>[],
+    };
+    var reads = 0;
+    store = _Store(
+      ApiClient(
+        client: MockClient((request) async {
+          if (request.method == 'PUT') return saving.future;
+          if (request.url.path.endsWith('/componentes')) {
+            if (reads++ == 0) return loading.future;
+            return http.Response(jsonEncode(data), 200);
+          }
+          return http.Response(
+            jsonEncode({
+              'costoTotal': null,
+              'estadoCosteo': 'INCOMPLETO',
+              'subtotalCostoConocido': 1,
+            }),
+            200,
+          );
+        }),
+      ),
+    )..loaded = true;
+    final product = Product(
+      'Prueba',
+      120,
+      'Especiales',
+      Icons.restaurant,
+      Colors.green,
+    )..id = 1;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showProductCost(context, product),
+              child: const Text('Configurar'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Configurar'));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Cargando cantidades y costos…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    loading.complete(http.Response(jsonEncode(data), 200));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Guardar costeo'));
+    await tester.tap(find.text('Guardar costeo'));
+    await tester.pump();
+    expect(find.text('Guardando costeo…'), findsOneWidget);
+    expect(
+      tester
+          .widget<PrimaryButton>(
+            find.widgetWithText(PrimaryButton, 'Guardando costeo…'),
+          )
+          .onTap,
+      isNull,
+    );
+    saving.complete(http.Response('{"ok":true}', 200));
+    await tester.pumpAndSettle();
+    expect(find.text('Guardar costeo'), findsOneWidget);
+    expect(find.text('Cantidades guardadas'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
   setUpAll(() async {
     final font = FontLoader('PlusJakartaSans');
     for (final w in ['500', '700']) {

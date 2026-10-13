@@ -14,18 +14,61 @@ import '../widgets/toast.dart';
 import 'common.dart';
 
 Future<void> showProductCost(BuildContext context, Product product) async {
-  try {
-    final data = await store.api.get('/platillos/${product.id}/componentes');
-    if (context.mounted) {
-      await showGlassSheet<void>(
-        context,
-        builder: (_) =>
-            _CostSheet(product: product, data: Map<String, dynamic>.from(data)),
+  await showGlassSheet<void>(
+    context,
+    builder: (_) => _CostLoader(product: product),
+  );
+}
+
+class _CostLoader extends StatefulWidget {
+  const _CostLoader({required this.product});
+  final Product product;
+  @override
+  State<_CostLoader> createState() => _CostLoaderState();
+}
+
+class _CostLoaderState extends State<_CostLoader> {
+  late Future<dynamic> _data = _load();
+  Future<dynamic> _load() =>
+      store.api.get('/platillos/${widget.product.id}/componentes');
+  @override
+  Widget build(BuildContext context) => FutureBuilder<dynamic>(
+    future: _data,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.done &&
+          !snapshot.hasError) {
+        return _CostSheet(
+          product: widget.product,
+          data: Map<String, dynamic>.from(snapshot.data),
+        );
+      }
+      return SheetBody(
+        title: 'Configuración del platillo',
+        child: snapshot.hasError
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(snapshot.error.toString(), style: KText.body),
+                  const SizedBox(height: KSpace.m),
+                  SoftButton(
+                    label: 'Reintentar',
+                    onTap: () => setState(() => _data = _load()),
+                  ),
+                ],
+              )
+            : const Padding(
+                padding: EdgeInsets.symmetric(vertical: KSpace.xl),
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: KSpace.m),
+                    Text('Cargando cantidades y costos…'),
+                  ],
+                ),
+              ),
       );
-    }
-  } catch (e) {
-    if (context.mounted) showErrorToast(context, e.toString());
-  }
+    },
+  );
 }
 
 class _CostSheet extends StatefulWidget {
@@ -51,6 +94,7 @@ class _CostSheetState extends State<_CostSheet> {
       );
   final _fixed = TextEditingController();
   bool _confirmed = false;
+  bool _saving = false;
   int? _option;
   Map<String, dynamic>? _preview;
   final _additional = TextEditingController();
@@ -233,6 +277,16 @@ class _CostSheetState extends State<_CostSheet> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await _persist();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _persist() async {
     if (store.saving) return;
     final duplicates = _duplicateIngredients;
     if (duplicates.isNotEmpty) {
@@ -528,9 +582,9 @@ class _CostSheetState extends State<_CostSheet> {
         ),
         const SizedBox(height: KSpace.s),
         PrimaryButton(
-          label: 'Guardar costeo',
+          label: _saving ? 'Guardando costeo…' : 'Guardar costeo',
           icon: KIcons.checkStrong,
-          onTap: _save,
+          onTap: _saving ? null : _save,
         ),
       ],
     ),

@@ -58,6 +58,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   late bool _mango = _draft.extras.contains('Mango');
 
   bool get _isNew => widget.product == null;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -84,7 +85,17 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
           ? (_int(_single) ?? 0) > 0 && (_int(_double) ?? 0) > 0
           : (_int(_price) ?? 0) > 0);
 
-  Future<void> _save() => runAction(context, () async {
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await _persist();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _persist() => runAction(context, () async {
     final p = _draft
       ..name = _name.text.trim()
       ..category = _category
@@ -421,9 +432,13 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       ),
       bottom: BottomActionBar(
         child: PrimaryButton(
-          label: _isNew ? 'Agregar al menú' : 'Guardar cambios',
+          label: _saving
+              ? 'Guardando platillo…'
+              : _isNew
+              ? 'Agregar al menú'
+              : 'Guardar cambios',
           icon: KIcons.checkStrong,
-          onTap: _valid ? _save : null,
+          onTap: _valid && !_saving ? _save : null,
         ),
       ),
     );
