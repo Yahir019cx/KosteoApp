@@ -888,35 +888,10 @@ class _SaucePicker extends StatefulWidget {
 
 class _SaucePickerState extends State<_SaucePicker> {
   final _search = TextEditingController();
-  bool _saving = false;
   @override
   void dispose() {
     _search.dispose();
     super.dispose();
-  }
-
-  Future<void> _create() async {
-    final name = _search.text.trim();
-    if (name.isEmpty || _saving) return;
-    setState(() => _saving = true);
-    try {
-      final option = Map<String, dynamic>.from(
-        await store.api.request(
-          'POST',
-          '/platillos/${widget.product.id}/salsas',
-          body: {'nombre': name},
-        ),
-      );
-      widget.product.options.removeWhere(
-        (o) => o['opcionId'] == option['opcionId'],
-      );
-      widget.product.options.add(option);
-      if (mounted) Navigator.of(context).pop(option['nombre'] as String);
-    } catch (e) {
-      if (mounted) showErrorToast(context, e.toString());
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
   }
 
   @override
@@ -934,7 +909,7 @@ class _SaucePickerState extends State<_SaucePicker> {
         children: [
           KTextField(
             controller: _search,
-            hint: 'Buscar o escribir una salsa nueva',
+            hint: 'Buscar salsa',
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: KSpace.m),
@@ -947,18 +922,11 @@ class _SaucePickerState extends State<_SaucePicker> {
                 onTap: () => Navigator.of(context).pop(name),
               ),
             ),
-          if (query.isNotEmpty &&
-              !widget.product.extras.any(
-                (s) =>
-                    s.toLowerCase() == query ||
-                    s.toLowerCase() == 'salsa $query',
-              )) ...[
-            const SizedBox(height: KSpace.s),
-            PrimaryButton(
-              label: _saving ? 'Guardando salsa...' : 'Agregar salsa',
-              onTap: _saving ? null : _create,
+          if (choices.isEmpty)
+            Text(
+              'No hay coincidencias. Agrega salsas desde Productos.',
+              style: KText.caption,
             ),
-          ],
         ],
       ),
     );

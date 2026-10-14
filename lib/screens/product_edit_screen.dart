@@ -14,6 +14,7 @@ import '../widgets/toast.dart';
 import 'common.dart';
 import 'dish_photo.dart';
 import 'product_cost_sheet.dart';
+import 'product_sauces_sheet.dart';
 
 /// Alta o edición de un producto del menú: foto, nombre, categoría, precio
 /// (o Individual/Pa Compartir), si pide complemento y disponibilidad.
@@ -99,7 +100,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     final p = _draft
       ..name = _name.text.trim()
       ..category = _category
-      ..hasOptions = _hasOptions
+      ..hasOptions = _hasOptions || _draft.extras.any(isSauceOption)
       ..paused = !_available;
     if (_hasOptions) {
       if (p.options.isEmpty) {
@@ -123,6 +124,9 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
           'precioAdicional': 0,
         });
       }
+    }
+    if (!_hasOptions) {
+      p.options.removeWhere((o) => !isSauceOption(o['nombre']));
     }
     if (_hasSizes) {
       p
@@ -408,6 +412,29 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                         },
                       ),
                     ),
+                  _Block(
+                    label: 'Salsas',
+                    hint: 'Se eligen al tomar el pedido. Sin recargo.',
+                    child: SoftButton(
+                      label: 'Elegir salsas disponibles',
+                      icon: KIcons.plus,
+                      onTap: () async {
+                        final options = await showProductSauces(
+                          context,
+                          _draft.options
+                              .where((o) => isSauceOption(o['nombre']))
+                              .toList(),
+                        );
+                        if (options == null || !mounted) return;
+                        setState(() {
+                          _draft.options.removeWhere(
+                            (o) => isSauceOption(o['nombre']),
+                          );
+                          _draft.options.addAll(options);
+                        });
+                      },
+                    ),
+                  ),
                   _Block(
                     label: 'Disponibilidad',
                     hint: 'Pausado no aparece al tomar pedidos.',

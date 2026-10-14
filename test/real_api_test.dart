@@ -315,6 +315,35 @@ void main() {
               .cost,
           65.49,
         );
+        final sauceName = '__E2E_${operationKey()}';
+        final sauce = await store.createSauce(sauceName);
+        expect(
+          (await store.getSauces()).any(
+            (s) => s['salsaId'] == sauce['salsaId'],
+          ),
+          isTrue,
+        );
+        final reusable =
+            Product(
+                '__SALSA_${operationKey()}',
+                100,
+                'Especiales',
+                Icons.restaurant,
+                Colors.green,
+              )
+              ..options = [
+                {
+                  'tipo': 'EXTRA',
+                  'nombre': 'Salsa $sauceName',
+                  'precioAdicional': 0,
+                  'salsaId': sauce['salsaId'],
+                },
+              ];
+        await store.saveProduct(reusable);
+        final linked = store.product(reusable.id).options.single;
+        expect(linked['salsaId'], sauce['salsaId']);
+        expect(linked['nombre'], 'Salsa $sauceName');
+        expect(linked['precioAdicional'], 0);
       } finally {
         client.dispose();
       }

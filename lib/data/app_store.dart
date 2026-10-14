@@ -1278,6 +1278,7 @@ class KosteoStore extends ChangeNotifier {
                       .map(
                         (o) => {
                           'tipo': o['tipo'],
+                          if (o['salsaId'] != null) 'salsaId': o['salsaId'],
                           'nombre': o['nombre'],
                           'precioAdicional': isOptionalIngredient(o['nombre'])
                               ? 0
@@ -1312,6 +1313,14 @@ class KosteoStore extends ChangeNotifier {
   }
 
   Future<void> addProduct(Product p) => saveProduct(p);
+  Future<List<Map<String, dynamic>>> getSauces() async =>
+      (await api.get('/salsas') as List)
+          .map((s) => Map<String, dynamic>.from(s))
+          .toList();
+  Future<Map<String, dynamic>> createSauce(String name) async =>
+      Map<String, dynamic>.from(
+        await api.request('POST', '/salsas', body: {'nombre': name}),
+      );
   Future<void> removeProduct(Product p) =>
       mutate('DELETE', '/platillos/${p.id}', null);
   Future<void> togglePaused(Product p) =>

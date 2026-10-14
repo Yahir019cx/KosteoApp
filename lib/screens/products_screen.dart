@@ -11,6 +11,7 @@ import '../widgets/toast.dart';
 import 'common.dart';
 import 'product_edit_screen.dart';
 import 'product_cost_sheet.dart';
+import 'product_sauces_sheet.dart';
 
 /// Pestaña Productos: el menú que se vende. Foto real, precio y
 /// disponibilidad (pausar/activar con un toque). Tocar abre el editor.
@@ -42,6 +43,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 subtitle:
                     '${products.length} en el menú${paused > 0 ? ' · $paused pausado${paused == 1 ? '' : 's'}' : ''}',
                 actions: [
+                  SoftButton(
+                    label: 'Salsas',
+                    expand: false,
+                    onTap: () => showSauceCatalog(context),
+                  ),
                   CircleIconButton(
                     icon: KIcons.plus,
                     semanticLabel: 'Nuevo producto',

@@ -119,6 +119,13 @@ void main() {
       expect(tester.widget<PrimaryButton>(add).onTap, isNull);
       await tester.tap(find.text('Seleccionar salsa'));
       await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'morita');
+      await tester.pumpAndSettle();
+      expect(find.text('Agregar salsa'), findsNothing);
+      expect(
+        find.text('No hay coincidencias. Agrega salsas desde Productos.'),
+        findsOneWidget,
+      );
       await tester.enterText(find.byType(TextField).last, 'negra');
       await tester.pumpAndSettle();
       expect(find.text('Verde'), findsNothing);
