@@ -330,7 +330,7 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) => Expanded(
     child: Column(
       children: [
-        Text(value, style: KText.display.copyWith(fontSize: 26, color: color)),
+        Text(value, style: KText.displaySmall.copyWith(color: color)),
         Text(label, style: KText.caption),
       ],
     ),
@@ -368,7 +368,7 @@ class _Check extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: KText.bodyStrong.copyWith(fontSize: 14)),
+                  Text(title, style: KText.label),
                   Text(caption, style: KText.caption),
                 ],
               ),

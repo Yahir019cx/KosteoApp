@@ -154,8 +154,7 @@ class _ProductTile extends StatelessWidget {
               children: [
                 Text(
                   p.name,
-                  style: KText.bodyStrong.copyWith(
-                    fontSize: 14,
+                  style: KText.label.copyWith(
                     color: p.paused ? KColors.inkMuted : KColors.ink,
                   ),
                   maxLines: 1,

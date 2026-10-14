@@ -273,12 +273,8 @@ class DonutLegendRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      segment.label,
-                      style: KText.body.copyWith(fontSize: 14),
-                    ),
-                    if (hint != null)
-                      Text(hint!, style: KText.caption.copyWith(fontSize: 11)),
+                    Text(segment.label, style: KText.bodySmall),
+                    if (hint != null) Text(hint!, style: KText.micro),
                   ],
                 ),
               ),

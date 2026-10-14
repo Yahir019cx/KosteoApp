@@ -171,7 +171,7 @@ class PrimaryButton extends StatelessWidget {
           width: expand ? double.infinity : null,
           padding: const EdgeInsets.symmetric(horizontal: KSpace.xl),
           decoration: BoxDecoration(
-            color: c ?? KColors.sea,
+            color: c ?? KColors.seaDeep,
             borderRadius: BorderRadius.circular(KRadius.button),
           ),
           child: Row(
@@ -222,37 +222,42 @@ class SoftButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fg = KColors.readable(color);
     return Pressable(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: KMotion.base,
-        height: height,
-        width: expand ? double.infinity : null,
-        padding: const EdgeInsets.symmetric(horizontal: KSpace.l),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(KRadius.button - 4),
-        ),
-        child: Row(
-          mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: color, size: 18),
-              const SizedBox(width: KSpace.s),
-            ],
-            Flexible(
-              child: AnimatedSwitcher(
-                duration: KMotion.fast,
-                child: Text(
-                  label,
-                  key: ValueKey(label),
-                  style: KText.bodyStrong.copyWith(color: color, fontSize: 14),
-                  overflow: TextOverflow.ellipsis,
+      child: AnimatedOpacity(
+        duration: KMotion.fast,
+        opacity: onTap != null ? 1 : 0.45,
+        child: AnimatedContainer(
+          duration: KMotion.base,
+          height: height,
+          width: expand ? double.infinity : null,
+          padding: const EdgeInsets.symmetric(horizontal: KSpace.l),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(KRadius.button - 4),
+          ),
+          child: Row(
+            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, color: fg, size: 18),
+                const SizedBox(width: KSpace.s),
+              ],
+              Flexible(
+                child: AnimatedSwitcher(
+                  duration: KMotion.fast,
+                  child: Text(
+                    label,
+                    key: ValueKey(label),
+                    style: KText.label.copyWith(color: fg),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -270,9 +275,7 @@ class SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: KSpace.m),
       child: Row(
         children: [
-          Expanded(
-            child: Text(text, style: KText.bodyStrong.copyWith(fontSize: 17)),
-          ),
+          Expanded(child: Text(text, style: KText.headline)),
           ?trailing,
         ],
       ),
@@ -338,7 +341,7 @@ class StatusPill extends StatelessWidget {
               label,
               key: ValueKey(label),
               style: KText.caption.copyWith(
-                color: Color.lerp(color, KColors.ink, 0.35),
+                color: KColors.readable(color),
                 fontWeight: FontWeight.w700,
               ),
             ),

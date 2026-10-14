@@ -255,7 +255,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
                         Expanded(
                           child: Text(
                             _customer ?? 'Sin nombre',
-                            style: KText.body.copyWith(fontSize: 14),
+                            style: KText.bodySmall,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -506,7 +506,7 @@ class _TotalRow extends StatelessWidget {
       children: [
         Text('Total', style: KText.body.copyWith(color: KColors.inkSoft)),
         const Spacer(),
-        AnimatedMoney(total, style: KText.display.copyWith(fontSize: 28)),
+        AnimatedMoney(total, style: KText.displaySmall),
       ],
     ),
   );
@@ -557,7 +557,7 @@ class _CartContents extends StatelessWidget {
                     children: [
                       Text(
                         l.name,
-                        style: KText.bodyStrong.copyWith(fontSize: 14),
+                        style: KText.label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -809,12 +809,14 @@ class _CustomerSheetState extends State<_CustomerSheet> {
                 onDateTimeChanged: (v) => hour = v,
               ),
             ),
+            const SizedBox(height: KSpace.m),
             PrimaryButton(
               label: 'Usar horario',
               onTap: () => Navigator.of(context).pop(
                 '${hour.hour.toString().padLeft(2, '0')}:${hour.minute.toString().padLeft(2, '0')}',
               ),
             ),
+            const SizedBox(height: KSpace.s),
             SoftButton(
               label: 'Sin horario definido',
               onTap: () => Navigator.of(context).pop(''),
@@ -950,11 +952,13 @@ class _SaucePickerState extends State<_SaucePicker> {
                 (s) =>
                     s.toLowerCase() == query ||
                     s.toLowerCase() == 'salsa $query',
-              ))
+              )) ...[
+            const SizedBox(height: KSpace.s),
             PrimaryButton(
               label: _saving ? 'Guardando salsa...' : 'Agregar salsa',
               onTap: _saving ? null : _create,
             ),
+          ],
         ],
       ),
     );

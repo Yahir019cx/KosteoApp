@@ -286,7 +286,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
             const SizedBox(height: KSpace.s),
             Text(
               'Provisional · faltan datos para completar el costo.',
-              style: KText.caption.copyWith(color: KColors.coral),
+              style: KText.caption.copyWith(
+                color: KColors.readable(KColors.coral),
+              ),
             ),
           ],
         ],
@@ -305,7 +307,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               fit: FlexFit.tight,
               child: Text(
                 money(value),
-                style: KText.number.copyWith(color: color),
+                style: KText.number.copyWith(color: KColors.readable(color)),
                 textAlign: TextAlign.right,
               ),
             ),

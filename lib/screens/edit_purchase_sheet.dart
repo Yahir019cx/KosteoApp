@@ -114,7 +114,7 @@ class _PartialYieldSheetState extends State<_PartialYieldSheet> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: KSpace.m),
+          const SizedBox(height: KSpace.l),
           const FieldLabel('Cantidad útil'),
           KTextField(
             controller: _useful,
@@ -122,9 +122,11 @@ class _PartialYieldSheetState extends State<_PartialYieldSheet> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (_) => setState(() {}),
           ),
-          if (store.yieldUnits(p.ingredient).length > 1)
+          if (store.yieldUnits(p.ingredient).length > 1) ...[
+            const SizedBox(height: KSpace.s),
             Wrap(
               spacing: KSpace.s,
+              runSpacing: KSpace.s,
               children: [
                 for (final unit in store.yieldUnits(p.ingredient))
                   CategoryChip(
@@ -134,18 +136,22 @@ class _PartialYieldSheetState extends State<_PartialYieldSheet> {
                   ),
               ],
             ),
-          const SizedBox(height: KSpace.m),
+          ],
           if (amount != null && amount > 0 && amount <= p.remainingToProcess!)
-            Text(
-              'Quedarán ${_display(p.remainingToProcess! - amount)} ${p.processingUnit} por procesar.',
-              style: KText.caption,
+            Padding(
+              padding: const EdgeInsets.only(top: KSpace.s, left: 4),
+              child: Text(
+                'Quedarán ${_display(p.remainingToProcess! - amount)} ${p.processingUnit} por procesar.',
+                style: KText.caption,
+              ),
             ),
-          const SizedBox(height: KSpace.m),
+          const SizedBox(height: KSpace.xl),
           PrimaryButton(
             label: _saving ? 'Guardando…' : 'Registrar rendimiento',
             onTap: valid && !_saving ? _save : null,
           ),
-          if (!p.manualProcessing)
+          if (!p.manualProcessing) ...[
+            const SizedBox(height: KSpace.s),
             SoftButton(
               label: 'Editar datos de compra',
               onTap: () => showGlassSheet<void>(
@@ -153,6 +159,7 @@ class _PartialYieldSheetState extends State<_PartialYieldSheet> {
                 builder: (_) => _EditPurchaseSheet(purchase: p),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -320,9 +327,11 @@ class _EditPurchaseSheetState extends State<_EditPurchaseSheet> {
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
               ],
             ),
-            if (store.yieldUnits(i).length > 1)
+            if (store.yieldUnits(i).length > 1) ...[
+              const SizedBox(height: KSpace.s),
               Wrap(
                 spacing: KSpace.s,
+                runSpacing: KSpace.s,
                 children: [
                   for (final u in store.yieldUnits(i))
                     CategoryChip(
@@ -332,6 +341,7 @@ class _EditPurchaseSheetState extends State<_EditPurchaseSheet> {
                     ),
                 ],
               ),
+            ],
             Padding(
               padding: const EdgeInsets.only(top: KSpace.s, left: 4),
               child: Text(
@@ -340,7 +350,9 @@ class _EditPurchaseSheetState extends State<_EditPurchaseSheet> {
                         ? 'Lo que obtuviste al exprimir.'
                         : 'Lo que quedó útil después de limpiar.'),
                 style: KText.caption.copyWith(
-                  color: yieldHint == null ? KColors.inkSoft : KColors.lagoon,
+                  color: yieldHint == null
+                      ? KColors.inkSoft
+                      : KColors.lagoonDeep,
                 ),
               ),
             ),
@@ -351,7 +363,7 @@ class _EditPurchaseSheetState extends State<_EditPurchaseSheet> {
             icon: KIcons.checkStrong,
             onTap: _valid ? _save : null,
           ),
-          const SizedBox(height: KSpace.s),
+          const SizedBox(height: KSpace.l),
           SoftButton(
             label: 'Eliminar compra',
             icon: KIcons.trash,

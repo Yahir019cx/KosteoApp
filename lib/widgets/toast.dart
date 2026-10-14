@@ -132,10 +132,7 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
                         Flexible(
                           child: Semantics(
                             liveRegion: true,
-                            child: Text(
-                              widget.message,
-                              style: KText.bodyStrong.copyWith(fontSize: 14),
-                            ),
+                            child: Text(widget.message, style: KText.label),
                           ),
                         ),
                       ],

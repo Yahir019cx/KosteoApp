@@ -12,7 +12,7 @@ class CategoryChip extends StatelessWidget {
     required this.onTap,
     this.count,
     this.icon,
-    this.color = KColors.sea,
+    this.color = KColors.seaDeep,
   });
 
   final String label;
@@ -52,9 +52,7 @@ class CategoryChip extends StatelessWidget {
             ],
             AnimatedDefaultTextStyle(
               duration: KMotion.base,
-              style: KText.body.copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+              style: KText.label.copyWith(
                 color: selected ? Colors.white : KColors.inkSoft,
               ),
               child: Text(label),
@@ -169,9 +167,7 @@ class SegmentedPill<T> extends StatelessWidget {
                     child: Center(
                       child: AnimatedDefaultTextStyle(
                         duration: KMotion.base,
-                        style: KText.body.copyWith(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        style: KText.label.copyWith(
                           color: v == selected
                               ? KColors.seaDeep
                               : KColors.inkMuted,
@@ -247,13 +243,11 @@ class ChoiceTile extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: KText.bodyStrong.copyWith(
-                    fontSize: 14,
+                  style: KText.label.copyWith(
                     color: selected ? KColors.seaDeep : KColors.ink,
                   ),
                 ),
-                if (caption != null)
-                  Text(caption!, style: KText.caption.copyWith(fontSize: 11.5)),
+                if (caption != null) Text(caption!, style: KText.micro),
               ],
             ),
           ],

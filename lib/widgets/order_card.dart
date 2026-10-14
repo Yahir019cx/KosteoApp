@@ -52,7 +52,7 @@ class _OrderCardState extends State<OrderCard> {
         children: [
           Row(
             children: [
-              Text(o.folio, style: KText.bodyStrong.copyWith(fontSize: 17)),
+              Text(o.folio, style: KText.headline),
               const SizedBox(width: KSpace.s),
               Text(o.time, style: KText.caption),
               const Spacer(),
@@ -61,11 +61,11 @@ class _OrderCardState extends State<OrderCard> {
           ),
           const SizedBox(height: KSpace.s),
           if (o.deliveryHour != null)
-            Text('Entrega · ${o.deliveryHour}', style: KText.bodyStrong),
+            Text('Entrega a las ${o.deliveryHour}', style: KText.bodyStrong),
           if (o.jornadaId == null && status == OrderStatus.pending)
             Text(
               'Sin jornada',
-              style: KText.caption.copyWith(color: KColors.sea),
+              style: KText.caption.copyWith(color: KColors.seaDeep),
             ),
           Row(
             children: [
@@ -82,7 +82,7 @@ class _OrderCardState extends State<OrderCard> {
           ),
           if (o.tipoEntrega == 'ENTREGA' && (o.reference ?? '').isNotEmpty)
             Text(
-              'Entrega · ${o.reference}',
+              'Ref. ${o.reference}',
               style: KText.caption,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -105,24 +105,18 @@ class _OrderCardState extends State<OrderCard> {
                     width: 30,
                     child: Text(
                       '${l.qty}×',
-                      style: KText.number.copyWith(
-                        color: KColors.sea,
-                        fontSize: 14,
-                      ),
+                      style: KText.number.copyWith(color: KColors.seaDeep),
                     ),
                   ),
                   Expanded(
                     child: Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(
-                            text: l.name,
-                            style: KText.body.copyWith(fontSize: 14),
-                          ),
+                          TextSpan(text: l.name, style: KText.bodySmall),
                           if (l.detail.isNotEmpty)
                             TextSpan(
                               text: '  ${l.detail}',
-                              style: KText.caption.copyWith(fontSize: 12),
+                              style: KText.caption,
                             ),
                         ],
                       ),
@@ -160,10 +154,7 @@ class _OrderCardState extends State<OrderCard> {
                           const SizedBox(width: 6),
                           Text(
                             status.label,
-                            style: KText.bodyStrong.copyWith(
-                              color: status.color,
-                              fontSize: 14,
-                            ),
+                            style: KText.label.copyWith(color: status.color),
                           ),
                         ],
                       )

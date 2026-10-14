@@ -135,7 +135,10 @@ class _Greeting extends StatelessWidget {
             children: [
               Text(greeting(), style: KText.title.copyWith(fontSize: 26)),
               const SizedBox(height: 2),
-              Text(todayLabel(), style: KText.caption.copyWith(fontSize: 14)),
+              Text(
+                todayLabel(),
+                style: KText.bodySmall.copyWith(color: KColors.inkSoft),
+              ),
             ],
           ),
         ),
@@ -312,10 +315,7 @@ class _DonutCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      'Estado del negocio',
-                      style: KText.bodyStrong.copyWith(fontSize: 17),
-                    ),
+                    child: Text('Estado del negocio', style: KText.headline),
                   ),
                   const SizedBox(width: KSpace.s),
                   Text('${m.orderCount} pedidos', style: KText.caption),
@@ -385,8 +385,7 @@ class _Delta extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             pct == null ? 'Sin comparativo' : '$pct% $vs',
-            style: KText.caption.copyWith(
-              fontSize: 11.5,
+            style: KText.micro.copyWith(
               color: KColors.success,
               fontWeight: FontWeight.w700,
             ),
@@ -438,8 +437,7 @@ class _OrdersSummary extends StatelessWidget {
                             child: Text(
                               '${store.countByJornada(items[i].$1)}',
                               key: ValueKey(store.countByJornada(items[i].$1)),
-                              style: KText.display.copyWith(
-                                fontSize: 28,
+                              style: KText.displaySmall.copyWith(
                                 color: items[i].$1.color,
                               ),
                             ),
@@ -494,9 +492,7 @@ class _TopSellers extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     top[i].$1.name,
-                                    style: KText.bodyStrong.copyWith(
-                                      fontSize: 14,
-                                    ),
+                                    style: KText.label,
                                   ),
                                 ),
                                 Text(

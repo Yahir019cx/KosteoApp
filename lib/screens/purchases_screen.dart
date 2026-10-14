@@ -265,7 +265,7 @@ class _PendingYieldBanner extends StatelessWidget {
               count == 1
                   ? '1 compra tiene cantidad por procesar. Tócala para registrar una parte.'
                   : '$count compras tienen cantidad por procesar. Tócalas para registrar una parte.',
-              style: KText.body.copyWith(fontSize: 13.5),
+              style: KText.bodySmall,
             ),
           ),
         ],

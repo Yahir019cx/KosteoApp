@@ -149,7 +149,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       label: s.filterLabel,
                       count: store.countBy(s),
                       selected: s == filter,
-                      color: KColors.sea,
+                      color: KColors.seaDeep,
                       onTap: () => setState(() {
                         store.ordersFilter.value = s;
                         _batchSelecting = false;
@@ -360,7 +360,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final j in abiertas)
+                  for (final (i, j) in abiertas.indexed) ...[
+                    if (i > 0) const SizedBox(height: KSpace.s),
                     SoftButton(
                       label:
                           '${j['fechaInicio'].toString().split('T').first} · ${j['fechaFin'].toString().split('T').first}',
@@ -398,6 +399,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         Navigator.of(ctx).pop();
                       }),
                     ),
+                  ],
                 ],
               ),
       ),

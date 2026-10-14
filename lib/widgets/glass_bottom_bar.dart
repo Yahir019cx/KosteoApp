@@ -103,7 +103,7 @@ class _NavButton extends StatelessWidget {
             const SizedBox(height: 3),
             AnimatedDefaultTextStyle(
               duration: KMotion.base,
-              style: KText.caption.copyWith(fontSize: 11, color: color),
+              style: KText.micro.copyWith(color: color),
               child: Text(item.label),
             ),
           ],

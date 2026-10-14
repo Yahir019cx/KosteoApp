@@ -18,13 +18,20 @@ abstract final class KColors {
   // Tinta (30%)
   static const ink = Color(0xFF1E3442);
   static const inkSoft = Color(0xFF4F6573);
-  static const inkMuted = Color(0xFF8A9AA5);
+
+  /// Texto terciario: lo más claro que sigue siendo legible (≥4.5:1 en blanco).
+  static const inkMuted = Color(0xFF657683);
   static const line = Color(0xFFE6EBEF);
 
   // Marca (10%)
   static const sea = Color(0xFF1B9DD9);
-  static const seaDeep = Color(0xFF0F7FB6);
+
+  /// Relleno de acciones con texto blanco y texto de marca (≥4.5:1).
+  static const seaDeep = Color(0xFF0E78AD);
   static const lagoon = Color(0xFF33C2B4);
+
+  /// Laguna para texto; [lagoon] solo alcanza para iconos y gráficas.
+  static const lagoonDeep = Color(0xFF1A8277);
   static const sky = Color(0xFF9ED9F2);
   static const coral = Color(0xFFFF8A5C);
   static const coralDeep = Color(0xFFEC6A3C);
@@ -33,6 +40,16 @@ abstract final class KColors {
   // Estados
   static const success = Color(0xFF2BB57A);
   static const danger = Color(0xFFE5574B);
+
+  /// Oscurece [c] hacia la tinta lo justo para leerse como texto sobre
+  /// blanco o sobre su propio tinte al 10–13%.
+  static Color readable(Color c) {
+    for (var t = 0.0; t < 1; t += 0.05) {
+      final v = Color.lerp(c, ink, t)!;
+      if (1.05 / (v.computeLuminance() + 0.05) >= 5) return v;
+    }
+    return ink;
+  }
 }
 
 /// Grid de 4/8 pt.
@@ -57,7 +74,9 @@ abstract final class KRadius {
   static const sheet = 32.0;
 }
 
-/// Una sola familia (Plus Jakarta Sans), 4 tamaños, 2 pesos.
+/// Una sola familia (Plus Jakarta Sans), 2 pesos y una escala cerrada:
+/// display 32 · displaySmall 28 · title 22 · headline 17 · body 15 ·
+/// bodySmall/label 14 · caption 12.5 · micro 11.5. Nada de fontSize sueltos.
 abstract final class KText {
   static const _tab = [FontFeature.tabularFigures()];
 
@@ -73,6 +92,9 @@ abstract final class KText {
     fontFeatures: _tab,
   );
 
+  /// Cifras grandes secundarias (total del carrito, métricas del cierre).
+  static TextStyle get displaySmall => display.copyWith(fontSize: 28);
+
   static TextStyle get title => _base.copyWith(
     fontSize: 22,
     fontWeight: FontWeight.w700,
@@ -85,12 +107,24 @@ abstract final class KText {
 
   static TextStyle get bodyStrong => body.copyWith(fontWeight: FontWeight.w700);
 
+  /// Títulos de sección y nombres destacados en cards.
+  static TextStyle get headline => bodyStrong.copyWith(fontSize: 17);
+
+  /// Texto corrido compacto (líneas de pedido, avisos).
+  static TextStyle get bodySmall => body.copyWith(fontSize: 14);
+
+  /// Botones secundarios, chips, etiquetas de campo.
+  static TextStyle get label => bodySmall.copyWith(fontWeight: FontWeight.w700);
+
   static TextStyle get caption => _base.copyWith(
     fontSize: 12.5,
     fontWeight: FontWeight.w500,
     color: KColors.inkSoft,
     height: 1.3,
   );
+
+  /// Notas mínimas: "Opcional", unidades bajo un precio, etiquetas de la barra.
+  static TextStyle get micro => caption.copyWith(fontSize: 11.5);
 
   static TextStyle get number => bodyStrong.copyWith(fontFeatures: _tab);
 }

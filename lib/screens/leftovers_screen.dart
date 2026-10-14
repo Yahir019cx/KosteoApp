@@ -247,10 +247,7 @@ class _LeftoverCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      i.name,
-                      style: KText.bodyStrong.copyWith(fontSize: 15),
-                    ),
+                    Text(i.name, style: KText.bodyStrong),
                     Text(
                       item.theoretical != null
                           ? 'Teórico: ${item.theoretical} $unit'
@@ -302,7 +299,7 @@ class _LeftoverCard extends StatelessWidget {
                     child: Text(
                       'Coincide',
                       style: KText.caption.copyWith(
-                        color: KColors.success,
+                        color: KColors.readable(KColors.success),
                         fontWeight: FontWeight.w700,
                       ),
                     ),

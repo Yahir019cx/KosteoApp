@@ -283,8 +283,7 @@ class _Preview extends StatelessWidget {
               children: [
                 Text(
                   name.isEmpty ? 'Nombre del insumo' : name,
-                  style: KText.bodyStrong.copyWith(
-                    fontSize: 17,
+                  style: KText.headline.copyWith(
                     color: name.isEmpty ? KColors.inkMuted : KColors.ink,
                   ),
                 ),

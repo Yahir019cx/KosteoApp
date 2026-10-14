@@ -43,17 +43,9 @@ class QuickAction extends StatelessWidget {
           : CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: KText.bodyStrong.copyWith(fontSize: 14),
-          textAlign: TextAlign.center,
-        ),
+        Text(label, style: KText.label, textAlign: TextAlign.center),
         if (caption != null)
-          Text(
-            caption!,
-            style: KText.caption.copyWith(fontSize: 11.5),
-            textAlign: TextAlign.center,
-          ),
+          Text(caption!, style: KText.micro, textAlign: TextAlign.center),
       ],
     );
     return Pressable(
@@ -117,7 +109,7 @@ class PurchaseRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(i.name, style: KText.bodyStrong.copyWith(fontSize: 15)),
+                  Text(i.name, style: KText.bodyStrong),
                   Text('${p.qtyLabel} · ${p.time}', style: KText.caption),
                   if (p.remainingToProcess != null && p.remainingToProcess! > 0)
                     Text(
@@ -137,7 +129,7 @@ class PurchaseRow extends StatelessWidget {
                   if (p.yieldValue != null)
                     Text(
                       'Rinde ${p.yieldValue} ${i.useUnit}',
-                      style: KText.caption.copyWith(color: KColors.lagoon),
+                      style: KText.caption.copyWith(color: KColors.lagoonDeep),
                     ),
                 ],
               ),
@@ -184,7 +176,7 @@ class IngredientRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(i.name, style: KText.bodyStrong.copyWith(fontSize: 15)),
+                  Text(i.name, style: KText.bodyStrong),
                   Text(
                     'Compra ${i.buyUnit} · usa ${i.useUnit}${i.hasYield ? ' · merma' : ''}',
                     style: KText.caption,
@@ -200,10 +192,7 @@ class IngredientRow extends StatelessWidget {
                     money(i.lastCost!),
                     style: KText.number.copyWith(fontSize: 14),
                   ),
-                  Text(
-                    '/${i.buyUnit}',
-                    style: KText.caption.copyWith(fontSize: 11),
-                  ),
+                  Text('/${i.buyUnit}', style: KText.micro),
                 ],
               ),
           ],

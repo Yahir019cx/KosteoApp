@@ -117,7 +117,7 @@ class ProductCard extends StatelessWidget {
                                 ),
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
-                                  color: KColors.sea,
+                                  color: KColors.seaDeep,
                                   borderRadius: BorderRadius.circular(
                                     KRadius.chip,
                                   ),
@@ -146,7 +146,7 @@ class ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       product.name,
-                      style: KText.bodyStrong.copyWith(fontSize: 14),
+                      style: KText.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -246,14 +246,23 @@ class _SizeToggle extends StatelessWidget {
                     child: Center(
                       child: AnimatedDefaultTextStyle(
                         duration: KMotion.base,
-                        style: KText.caption.copyWith(
-                          fontSize: 11.5,
+                        style: KText.micro.copyWith(
                           fontWeight: FontWeight.w700,
                           color: s == current
                               ? KColors.seaDeep
                               : KColors.inkMuted,
                         ),
-                        child: Text(s),
+                        // Una sola línea: "Pa Compartir" no cabe a 11.5 en
+                        // la card de teléfono y antes se partía y recortaba.
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: KSpace.xs,
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(s, maxLines: 1),
+                          ),
+                        ),
                       ),
                     ),
                   ),

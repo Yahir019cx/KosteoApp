@@ -78,11 +78,39 @@ class _InitialInventoryState extends State<_InitialInventory> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SoftButton(
-            label: _ingredient?.name ?? 'Elegir insumo',
-            icon: KIcons.plus,
-            onTap: _pick,
-          ),
+          if (_ingredient case final i?)
+            // Insumo elegido como selección (tocar para cambiar), no como acción.
+            KosteoCard(
+              padding: const EdgeInsets.all(KSpace.l),
+              radius: KRadius.tile,
+              onTap: _pick,
+              child: Row(
+                children: [
+                  IconTile(i.icon, tint: i.category.tint),
+                  const SizedBox(width: KSpace.m),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          i.name,
+                          style: KText.bodyStrong,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(i.category.label, style: KText.caption),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    'Cambiar',
+                    style: KText.label.copyWith(color: KColors.seaDeep),
+                  ),
+                ],
+              ),
+            )
+          else
+            SoftButton(label: 'Elegir insumo', icon: KIcons.plus, onTap: _pick),
           if (_ingredient != null) ...[
             const SizedBox(height: KSpace.s),
             SoftButton(
@@ -97,7 +125,7 @@ class _InitialInventoryState extends State<_InitialInventory> {
                 Navigator.of(context).pop(_ingredient);
               }),
             ),
-            const SizedBox(height: KSpace.m),
+            const SizedBox(height: KSpace.xl),
             const FieldLabel('Cantidad útil'),
             KTextField(
               controller: _qty,
@@ -125,7 +153,7 @@ class _InitialInventoryState extends State<_InitialInventory> {
                   ),
               ],
             ),
-            const SizedBox(height: KSpace.m),
+            const SizedBox(height: KSpace.l),
             FieldLabel('Costo por $_unit'),
             KTextField(
               controller: _cost,
@@ -136,14 +164,15 @@ class _InitialInventoryState extends State<_InitialInventory> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: KSpace.m),
-            if (valid)
+            if (valid) ...[
+              const SizedBox(height: KSpace.l),
               Text(
                 'Valor inicial: ${money(qty * cost)}',
                 style: KText.bodyStrong,
               ),
+            ],
           ],
-          const SizedBox(height: KSpace.l),
+          const SizedBox(height: KSpace.xl),
           PrimaryButton(
             label: 'Guardar saldo inicial',
             icon: KIcons.checkStrong,

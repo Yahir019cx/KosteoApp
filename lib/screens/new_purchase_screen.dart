@@ -299,10 +299,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      i.name,
-                      style: KText.bodyStrong.copyWith(fontSize: 17),
-                    ),
+                    Text(i.name, style: KText.headline),
                     Text(
                       '${i.category.label} · se compra por ${i.buyUnit}',
                       style: KText.caption,
@@ -313,7 +310,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
               Text(
                 'Cambiar',
                 style: KText.caption.copyWith(
-                  color: KColors.sea,
+                  color: KColors.seaDeep,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -370,9 +367,11 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
             ],
           ),
-          if (store.yieldUnits(i).length > 1)
+          if (store.yieldUnits(i).length > 1) ...[
+            const SizedBox(height: KSpace.s),
             Wrap(
               spacing: KSpace.s,
+              runSpacing: KSpace.s,
               children: [
                 for (final u in store.yieldUnits(i))
                   CategoryChip(
@@ -382,6 +381,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
                   ),
               ],
             ),
+          ],
           Padding(
             padding: const EdgeInsets.only(top: KSpace.s, left: 4),
             child: Text(
@@ -412,12 +412,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
                         size: 20,
                       ),
                       const SizedBox(width: KSpace.m),
-                      Expanded(
-                        child: Text(
-                          hint,
-                          style: KText.body.copyWith(fontSize: 14),
-                        ),
-                      ),
+                      Expanded(child: Text(hint, style: KText.bodySmall)),
                     ],
                   ),
                 ),
@@ -483,7 +478,7 @@ class _BigTile extends StatelessWidget {
           const Spacer(),
           Text(
             title,
-            style: KText.bodyStrong.copyWith(fontSize: compact ? 15 : 17),
+            style: compact ? KText.bodyStrong : KText.headline,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -523,10 +518,7 @@ class _AddTile extends StatelessWidget {
             const SizedBox(height: KSpace.s),
             Text(
               'Nuevo insumo',
-              style: KText.bodyStrong.copyWith(
-                color: KColors.seaDeep,
-                fontSize: 14,
-              ),
+              style: KText.label.copyWith(color: KColors.seaDeep),
             ),
           ],
         ),

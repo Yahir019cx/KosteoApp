@@ -129,10 +129,10 @@ class FieldLabel extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: KSpace.s + 2, left: 4),
     child: Row(
       children: [
-        Text(text, style: KText.bodyStrong.copyWith(fontSize: 14)),
+        Text(text, style: KText.label),
         if (optional) ...[
           const SizedBox(width: KSpace.s),
-          Text('Opcional', style: KText.caption.copyWith(fontSize: 11.5)),
+          Text('Opcional', style: KText.micro),
         ],
       ],
     ),
@@ -192,8 +192,9 @@ class _QtyStepperState extends State<QtyStepper> {
 
   @override
   Widget build(BuildContext context) {
-    final s = widget.compact ? 32.0 : 40.0;
-    return Container(
+    // 40 px mínimo + 4 px del contenedor = 44 px de zona táctil.
+    final s = widget.compact ? 40.0 : 44.0;
+    final stepper = Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: KColors.mist.withValues(alpha: 0.7),
@@ -227,11 +228,6 @@ class _QtyStepperState extends State<QtyStepper> {
                   widget.onChanged(num.tryParse(t.replaceAll(',', '.')) ?? 0),
             ),
           ),
-          if (widget.unit != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: Text(widget.unit!, style: KText.caption),
-            ),
           _StepBtn(
             icon: KIcons.plusStrong,
             size: s,
@@ -240,6 +236,17 @@ class _QtyStepperState extends State<QtyStepper> {
           ),
         ],
       ),
+    );
+    // La unidad va fuera de la píldora: dentro competía con el número y
+    // achicaba la zona de los botones.
+    if (widget.unit == null) return stepper;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        stepper,
+        const SizedBox(width: KSpace.s),
+        Text(widget.unit!, style: KText.bodySmall),
+      ],
     );
   }
 }
